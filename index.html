@@ -195,6 +195,8 @@
     touch-action: manipulation;
   }
   .btn-secondary:active{ background:rgba(242,246,238,0.06); }
+  .btn-primary:disabled, .btn-secondary:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-primary:disabled:active, .btn-secondary:disabled:active{ transform:none; filter:none; }
   .btn-row{ display:flex; gap:10px; }
   .btn-row > *{ flex:1; }
 
@@ -1439,7 +1441,9 @@
     var roster = getRosterNames();
     renderPlayerListInto('lobbyPlayerList', roster);
     $('lobbyCount').textContent = roster.length;
-    $('startOnlineBtn').disabled = net.order.length < 2;
+    var startDisabled = net.order.length < 2;
+    $('startOnlineBtn').disabled = startDisabled;
+    console.log('updateLobbyUI: net.order.length =', net.order.length, '-> startOnlineBtn.disabled =', startDisabled);
     updateImpCap();
   }
   function broadcastPlayers(){
