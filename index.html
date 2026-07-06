@@ -198,6 +198,23 @@
   .btn-row{ display:flex; gap:10px; }
   .btn-row > *{ flex:1; }
 
+  .hidden-ui{ display:none !important; }
+
+  /* Online mode */
+  .plain-input{
+    width:100%; background:rgba(242,246,238,0.05); border:1px solid var(--pitch-line); border-radius:12px;
+    padding:14px; color:var(--chalk); font-family:'Inter'; font-size:16px; outline:none;
+  }
+  .plain-input::placeholder{ color:var(--chalk-dim); }
+  .room-code{ font-family:'Anton'; font-size:44px; letter-spacing:6px; color:var(--gold); margin:4px 0; }
+  .lobby-list{ display:flex; flex-direction:column; gap:8px; }
+  .lobby-player{
+    display:flex; align-items:center; gap:10px; background:rgba(242,246,238,0.05);
+    border:1px solid var(--pitch-line); border-radius:12px; padding:10px 12px;
+    font-family:'Inter'; font-size:14px;
+  }
+  .join-error{ color:var(--red); font-size:13px; margin:10px 0 14px; text-align:center; line-height:1.4; }
+
   .footnote{
     text-align:center; color:var(--chalk-dim); font-size:12px; margin-top:auto; padding-top:22px; line-height:1.5;
   }
@@ -341,6 +358,14 @@
     <p class="subtitle">Everyone gets the same footballer. One person doesn't. Talk, bluff, vote.</p>
 
     <div class="field-card">
+      <div class="field-label">Mode</div>
+      <div class="segmented" id="modeToggle">
+        <button type="button" data-mode="local" class="active">Pass &amp; Play</button>
+        <button type="button" data-mode="online">Online</button>
+      </div>
+    </div>
+
+    <div class="field-card" id="playersFieldCard">
       <div class="field-label">Players</div>
       <div class="stepper">
         <button type="button" data-act="players-" aria-label="Fewer players">&#8722;</button>
@@ -377,22 +402,75 @@
       <div class="segmented-desc" id="difficultyDesc"></div>
     </div>
 
-    <div class="field-card">
+    <div class="field-card" id="namesFieldCard">
       <div class="field-label">Names <span style="opacity:.6; font-weight:400;">(optional)</span></div>
       <div class="names-grid" id="namesGrid"></div>
     </div>
 
-    <div style="margin-top:6px;">
+    <div style="margin-top:6px;" id="localStartWrap">
       <button class="btn-primary" id="startBtn">Kick Off &#9917;</button>
     </div>
 
-    <p class="footnote">False Nine runs right in your phone or desktop browser. iPhone and Android both work. Add this page to your Home Screen for a full-screen, app-like feel.</p>
+    <!-- ONLINE: choose host or join -->
+    <div id="onlineChooseWrap" class="hidden-ui" style="margin-top:6px;">
+      <div class="btn-row">
+        <button type="button" class="btn-primary" id="hostRoomBtn">Host a Room</button>
+        <button type="button" class="btn-secondary" id="joinRoomBtn">Join a Room</button>
+      </div>
+    </div>
+
+    <!-- ONLINE: host lobby -->
+    <div id="hostLobbyWrap" class="hidden-ui">
+      <div class="field-card" style="text-align:center;">
+        <div class="field-label" style="justify-content:center;">Room code</div>
+        <div class="room-code" id="roomCodeDisplay">----</div>
+        <div class="segmented-desc">Share this code with everyone joining.</div>
+      </div>
+      <div class="field-card">
+        <div class="field-label">Players in room <span id="lobbyCount">1</span></div>
+        <div class="lobby-list" id="lobbyPlayerList"></div>
+      </div>
+      <div class="join-error hidden-ui" id="lobbyError"></div>
+      <button type="button" class="btn-primary" id="startOnlineBtn" disabled>Start Game</button>
+      <button type="button" class="btn-secondary" id="cancelHostBtn" style="margin-top:10px;">Cancel</button>
+    </div>
+
+    <!-- ONLINE: join form -->
+    <div id="joinFormWrap" class="hidden-ui">
+      <div class="field-card">
+        <div class="field-label">Room code</div>
+        <input type="text" class="plain-input" id="joinCodeInput" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" style="text-transform:uppercase; letter-spacing:4px; text-align:center; font-family:'Anton';">
+      </div>
+      <div class="field-card">
+        <div class="field-label">Your name</div>
+        <input type="text" class="plain-input" id="joinNameInput" maxlength="16" autocomplete="off" placeholder="Your name">
+      </div>
+      <div class="join-error hidden-ui" id="joinError"></div>
+      <button type="button" class="btn-primary" id="joinSubmitBtn">Join</button>
+      <button type="button" class="btn-secondary" id="cancelJoinBtn" style="margin-top:10px;">Cancel</button>
+    </div>
+
+    <!-- ONLINE: waiting for host after joining -->
+    <div id="joinWaitWrap" class="hidden-ui">
+      <div class="field-card" style="text-align:center;">
+        <div class="field-label" style="justify-content:center;">You're in as</div>
+        <div class="room-code" id="joinWaitName" style="font-size:28px; letter-spacing:1px;">Name</div>
+      </div>
+      <div class="field-card">
+        <div class="field-label">Players in room <span id="joinWaitCount">1</span></div>
+        <div class="lobby-list" id="joinWaitList"></div>
+      </div>
+      <div class="segmented-desc" style="text-align:center;">Waiting for host to start&hellip;</div>
+      <button type="button" class="btn-secondary" id="leaveWaitBtn" style="margin-top:14px;">Leave Room</button>
+    </div>
+
+    <p class="footnote" id="setupFootnote">False Nine runs right in your phone or desktop browser. iPhone and Android both work. Add this page to your Home Screen for a full-screen, app-like feel.</p>
   </section>
 
   <!-- REVEAL SCREEN -->
   <section class="screen" id="screen-reveal">
     <div class="reveal-wrap">
-      <div class="pass-label">Pass the phone to</div>
+      <div class="pass-label" id="passLabel">Pass the phone to</div>
       <div class="pass-name" id="revealPassName">Player 1</div>
 
       <div class="card-scene">
@@ -414,6 +492,8 @@
 
       <div class="reveal-actions">
         <button class="btn-primary" id="nextRevealBtn" style="display:none;">Got it, Next Player</button>
+        <button class="btn-primary" id="onlineReadyBtn" style="display:none;">Ready</button>
+        <div class="segmented-desc hidden-ui" id="onlineWaitingNote" style="text-align:center; margin-top:14px;">Waiting for others&hellip;</div>
       </div>
     </div>
   </section>
@@ -424,7 +504,7 @@
       <div class="eyebrow">Discussion</div>
       <div class="timer-big" id="timerDisplay">03:00</div>
       <div class="timer-sub">Ask questions. Watch for hesitation. Find the impostor.</div>
-      <div class="timer-controls">
+      <div class="timer-controls" id="timerControls">
         <button class="icon-btn" id="timerStartPause">Start</button>
         <button class="icon-btn" id="timerReset">Reset</button>
       </div>
@@ -446,12 +526,15 @@
       <div class="end-actions">
         <button class="btn-primary" id="playAgainBtn">Play Again, Same Group</button>
         <button class="btn-secondary" id="newGameBtn">New Setup</button>
+        <button class="btn-secondary" id="leaveRoomBtn" style="display:none;">Leave Room</button>
+        <div class="segmented-desc hidden-ui" id="endWaitingNote" style="text-align:center;">Waiting for the host to start a new round&hellip;</div>
       </div>
     </div>
   </section>
 
 </div>
 
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -780,6 +863,7 @@
   ];
 
   var state = {
+    mode: 'local', // 'local' | 'online'
     playerCount: 5,
     impCount: 1,
     timeMinutes: 3,
@@ -795,6 +879,43 @@
     timerRunning: false,
     timerHandle: null
   };
+
+  // ---------- ONLINE MULTIPLAYER ----------
+  var ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I, easy to read aloud
+  function genRoomCode(){
+    var s = '';
+    for(var i=0;i<4;i++) s += ROOM_CODE_CHARS[Math.floor(Math.random()*ROOM_CODE_CHARS.length)];
+    return s;
+  }
+  function freshNet(){
+    return {
+      mode: null,       // 'host' | 'guest'
+      peer: null,
+      roomCode: null,
+      myName: '',
+      conns: {},        // host: connId -> {conn, name, ready}
+      order: [],        // host: connId list in join order
+      hostConn: null,   // guest: DataConnection to host
+      hostReady: false, // host's own reveal-ready flag
+      players: [],      // guest: last roster broadcast from host
+      myAssignment: null, // guest: {role, name, pos}
+      myDecoyName: null
+    };
+  }
+  var net = freshNet();
+  function teardownNet(){
+    try{
+      if(net.mode === 'host'){
+        net.order.forEach(function(id){
+          var c = net.conns[id];
+          if(c && c.conn && c.conn.open){ try{ c.conn.send({type:'closed'}); }catch(e){} }
+        });
+      }
+      if(net.mode === 'guest' && net.hostConn){ net.hostConn._leaving = true; }
+    }catch(e){}
+    if(net.peer){ try{ net.peer.destroy(); }catch(e){} }
+    net = freshNet();
+  }
 
   function $(id){ return document.getElementById(id); }
   function shuffle(arr){
@@ -880,6 +1001,40 @@
     $(id).classList.add('active');
   }
 
+  // ---------- MODE TOGGLE ----------
+  function hideAllOnlinePanels(){
+    ['onlineChooseWrap','hostLobbyWrap','joinFormWrap','joinWaitWrap'].forEach(function(id){
+      $(id).classList.add('hidden-ui');
+    });
+  }
+  function showOnlinePanel(name){
+    hideAllOnlinePanels();
+    if(name === 'choose') $('onlineChooseWrap').classList.remove('hidden-ui');
+    if(name === 'host') $('hostLobbyWrap').classList.remove('hidden-ui');
+    if(name === 'joinForm') $('joinFormWrap').classList.remove('hidden-ui');
+    if(name === 'joinWait') $('joinWaitWrap').classList.remove('hidden-ui');
+  }
+  function updateModeUI(){
+    document.querySelectorAll('#modeToggle [data-mode]').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-mode') === state.mode);
+    });
+    var isOnline = state.mode === 'online';
+    $('playersFieldCard').classList.toggle('hidden-ui', isOnline);
+    $('namesFieldCard').classList.toggle('hidden-ui', isOnline);
+    $('localStartWrap').classList.toggle('hidden-ui', isOnline);
+    if(isOnline){ showOnlinePanel('choose'); } else { hideAllOnlinePanels(); }
+    updateImpCap();
+  }
+  document.querySelectorAll('#modeToggle [data-mode]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var m = btn.getAttribute('data-mode');
+      if(state.mode === m) return;
+      if(state.mode === 'online'){ teardownNet(); }
+      state.mode = m;
+      updateModeUI();
+    });
+  });
+
   // ---------- DIFFICULTY ----------
   var CASUAL_GROUPS = {icon:true, modern:true};
   function getPlayerPool(){
@@ -934,11 +1089,17 @@
     return Math.max(1, Math.min(4, playerCount - 3));
   }
 
+  function effectivePlayerCount(){
+    if(state.mode === 'online' && net.mode === 'host') return 1 + net.order.length;
+    return state.playerCount;
+  }
+
   function updateImpCap(){
-    var maxImp = maxImpostorsFor(state.playerCount);
+    var count = effectivePlayerCount();
+    var maxImp = maxImpostorsFor(count);
     if(state.impCount > maxImp) state.impCount = maxImp;
     $('impCountVal').textContent = state.impCount;
-    $('impCapDesc').textContent = 'Up to ' + maxImp + ' with ' + state.playerCount + ' players, keeps crew in the majority.';
+    $('impCapDesc').textContent = 'Up to ' + maxImp + ' with ' + count + ' players, keeps crew in the majority.';
   }
 
   document.querySelectorAll('[data-act]').forEach(function(btn){
@@ -947,7 +1108,7 @@
       if(act==='players-'){ state.playerCount = Math.max(3, state.playerCount-1); renderNameInputs(); updateImpCap(); }
       if(act==='players+'){ state.playerCount = Math.min(12, state.playerCount+1); renderNameInputs(); updateImpCap(); }
       if(act==='imp-'){ state.impCount = Math.max(1, state.impCount-1); }
-      if(act==='imp+'){ state.impCount = Math.min(maxImpostorsFor(state.playerCount), state.impCount+1); }
+      if(act==='imp+'){ state.impCount = Math.min(maxImpostorsFor(effectivePlayerCount()), state.impCount+1); }
       if(act==='time-'){ state.timeMinutes = Math.max(1, state.timeMinutes-1); }
       if(act==='time+'){ state.timeMinutes = Math.min(10, state.timeMinutes+1); }
       $('playerCountVal').textContent = state.playerCount;
@@ -1030,10 +1191,27 @@
     }
   }
 
+  function applyCardContent(a, decoyName){
+    var front = $('cardFront');
+    if(a.role === 'impostor'){
+      front.className = 'card-face card-front role-impostor';
+      $('cardKicker').textContent = 'You are the';
+      $('cardHeadline').textContent = 'IMPOSTOR';
+      $('cardSub').textContent = 'Hint: it\u2019s a lot like ' + decoyName + '. Describe them, don\u2019t say the name.';
+    } else {
+      front.className = 'card-face card-front role-crew';
+      $('cardKicker').textContent = 'The footballer is';
+      $('cardHeadline').textContent = a.name;
+      $('cardSub').textContent = '';
+    }
+  }
+
   function renderReveal(){
     var i = state.revealIdx;
+    $('passLabel').textContent = 'Pass the phone to';
     $('revealPassName').textContent = getDisplayName(i);
     $('cardJersey').textContent = (i+1);
+    $('progressDots').style.display = '';
     var card = $('card');
 
     // Snap back instantly (no animated transition) BEFORE swapping content,
@@ -1041,20 +1219,10 @@
     card.classList.add('no-anim');
     card.classList.remove('flipped');
     $('nextRevealBtn').style.display = 'none';
+    $('onlineReadyBtn').style.display = 'none';
+    $('onlineWaitingNote').classList.add('hidden-ui');
 
-    var a = state.assignments[i];
-    var front = $('cardFront');
-    if(a.role === 'impostor'){
-      front.className = 'card-face card-front role-impostor';
-      $('cardKicker').textContent = 'You are the';
-      $('cardHeadline').textContent = 'IMPOSTOR';
-      $('cardSub').textContent = 'Hint: it\u2019s a lot like ' + state.decoyPlayer.n + '. Describe them, don\u2019t say the name.';
-    } else {
-      front.className = 'card-face card-front role-crew';
-      $('cardKicker').textContent = 'The footballer is';
-      $('cardHeadline').textContent = a.name;
-      $('cardSub').textContent = '';
-    }
+    applyCardContent(state.assignments[i], state.decoyPlayer.n);
     renderProgressDots();
 
     // Force the browser to apply the instant (no-transition) state, then
@@ -1067,16 +1235,45 @@
     });
   }
 
+  function enterOnlineReveal(a, decoyName, displayName){
+    var card = $('card');
+    card.classList.add('no-anim');
+    card.classList.remove('flipped');
+    $('nextRevealBtn').style.display = 'none';
+    $('onlineReadyBtn').style.display = 'none';
+    $('onlineWaitingNote').classList.add('hidden-ui');
+    $('progressDots').style.display = 'none';
+    $('passLabel').textContent = 'You are';
+    $('revealPassName').textContent = displayName;
+    $('cardJersey').textContent = '\u26bd';
+    applyCardContent(a, decoyName);
+    void card.offsetWidth;
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        card.classList.remove('no-anim');
+      });
+    });
+    showScreen('screen-reveal');
+  }
+
   $('card').addEventListener('click', function(){
     var card = $('card');
     if(card.classList.contains('flipped')) return;
     card.classList.add('flipped');
-    var isImpostor = state.assignments[state.revealIdx].role === 'impostor';
+    var isImpostor = (state.mode === 'online') ?
+      (net.myAssignment && net.myAssignment.role === 'impostor') :
+      state.assignments[state.revealIdx].role === 'impostor';
     playCardFlip();
     if(navigator.vibrate){
       navigator.vibrate(isImpostor ? [30, 60, 30, 60, 90] : [20]);
     }
-    setTimeout(function(){ $('nextRevealBtn').style.display = 'block'; }, 350);
+    setTimeout(function(){
+      if(state.mode === 'online'){
+        $('onlineReadyBtn').style.display = 'block';
+      } else {
+        $('nextRevealBtn').style.display = 'block';
+      }
+    }, 350);
   });
 
   $('nextRevealBtn').addEventListener('click', function(){
@@ -1089,10 +1286,32 @@
     }
   });
 
+  $('onlineReadyBtn').addEventListener('click', function(){
+    $('onlineReadyBtn').style.display = 'none';
+    $('onlineWaitingNote').classList.remove('hidden-ui');
+    if(net.mode === 'host'){
+      net.hostReady = true;
+      checkAllReadyHost();
+    } else if(net.mode === 'guest'){
+      if(net.hostConn && net.hostConn.open) net.hostConn.send({type:'ready'});
+    }
+  });
+
   // ---------- DISCUSS / TIMER ----------
   function fmt(sec){
     var m = Math.floor(sec/60), s = sec%60;
     return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  }
+  function updateDiscussUIForRole(){
+    var isGuest = (state.mode === 'online' && net.mode === 'guest');
+    $('timerControls').style.display = isGuest ? 'none' : 'flex';
+    $('goToVoteBtn').style.display = isGuest ? 'none' : 'inline-block';
+  }
+  function broadcastTick(){
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({type:'tick', remaining: state.timerRemaining});
+    });
   }
   function resetTimerDisplay(){
     state.timerRemaining = state.timeMinutes*60;
@@ -1100,6 +1319,8 @@
     $('timerStartPause').textContent = 'Start';
     state.timerRunning = false;
     clearInterval(state.timerHandle);
+    updateDiscussUIForRole();
+    if(state.mode === 'online' && net.mode === 'host') broadcastTick();
   }
   function tickTimer(){
     if(state.timerRemaining <= 0){
@@ -1112,6 +1333,7 @@
     }
     state.timerRemaining--;
     $('timerDisplay').textContent = fmt(state.timerRemaining);
+    if(state.mode === 'online' && net.mode === 'host') broadcastTick();
   }
   $('timerStartPause').addEventListener('click', function(){
     if(state.timerRunning){
@@ -1126,24 +1348,367 @@
   });
   $('timerReset').addEventListener('click', resetTimerDisplay);
   $('goToVoteBtn').addEventListener('click', function(){
+    if(state.mode === 'online' && net.mode !== 'host') return;
     clearInterval(state.timerHandle);
     state.timerRunning = false;
-    renderEnd();
-    showScreen('screen-end');
+    if(state.mode === 'online' && net.mode === 'host'){
+      triggerOnlineEnd();
+    } else {
+      renderEnd();
+      showScreen('screen-end');
+    }
   });
 
   // ---------- END ----------
+  function renderEndFromNames(impostorNames, secretName){
+    $('endImpostorName').textContent = impostorNames.join(' & ');
+    $('endSecretName').textContent = secretName;
+  }
   function renderEnd(){
     var names = [];
     for(var i=0;i<state.playerCount;i++){
       if(state.assignments[i].role === 'impostor') names.push(getDisplayName(i));
     }
-    $('endImpostorName').textContent = names.join(' & ');
-    $('endSecretName').textContent = state.secretPlayer.n;
+    renderEndFromNames(names, state.secretPlayer.n);
   }
-  $('playAgainBtn').addEventListener('click', startGame);
+  function updateEndScreenForOnline(){
+    var online = state.mode === 'online';
+    var isHost = online && net.mode === 'host';
+    var isGuest = online && net.mode === 'guest';
+    $('playAgainBtn').style.display = (!online || isHost) ? 'block' : 'none';
+    $('newGameBtn').style.display = online ? 'none' : 'block';
+    $('leaveRoomBtn').style.display = online ? 'block' : 'none';
+    $('endWaitingNote').classList.toggle('hidden-ui', !isGuest);
+  }
+  $('playAgainBtn').addEventListener('click', function(){
+    if(state.mode === 'online'){
+      if(net.mode === 'host') startOnlineGame();
+    } else {
+      startGame();
+    }
+  });
   $('newGameBtn').addEventListener('click', function(){
     showScreen('screen-setup');
+  });
+  $('leaveRoomBtn').addEventListener('click', function(){
+    teardownNet();
+    state.mode = 'local';
+    updateModeUI();
+    showScreen('screen-setup');
+  });
+
+  // ---------- ONLINE: shared helpers ----------
+  function showJoinError(msg){
+    var el = $('joinError');
+    if(msg){ el.textContent = msg; el.classList.remove('hidden-ui'); }
+    else { el.textContent=''; el.classList.add('hidden-ui'); }
+  }
+  function showLobbyError(msg){
+    var el = $('lobbyError');
+    if(msg){ el.textContent = msg; el.classList.remove('hidden-ui'); }
+    else { el.textContent=''; el.classList.add('hidden-ui'); }
+  }
+  function renderPlayerListInto(containerId, roster){
+    var wrap = $(containerId);
+    wrap.innerHTML = '';
+    roster.forEach(function(p, idx){
+      var row = document.createElement('div');
+      row.className = 'lobby-player';
+      var badge = document.createElement('div');
+      badge.className = 'jersey-num';
+      badge.textContent = (idx+1);
+      var label = document.createElement('div');
+      label.textContent = p.name + (p.isHost ? ' (Host)' : '');
+      row.appendChild(badge);
+      row.appendChild(label);
+      wrap.appendChild(row);
+    });
+  }
+
+  // ---------- ONLINE: host ----------
+  function getRosterNames(){
+    var arr = [{name: net.myName || 'Host', isHost:true}];
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c) arr.push({name: c.name || 'Player', isHost:false});
+    });
+    return arr;
+  }
+  function updateLobbyUI(){
+    $('roomCodeDisplay').textContent = net.roomCode || '----';
+    var roster = getRosterNames();
+    renderPlayerListInto('lobbyPlayerList', roster);
+    $('lobbyCount').textContent = roster.length;
+    $('startOnlineBtn').disabled = net.order.length < 2;
+    updateImpCap();
+  }
+  function broadcastPlayers(){
+    var roster = getRosterNames();
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({type:'players', players: roster});
+    });
+    updateLobbyUI();
+  }
+  function removeGuest(id){
+    delete net.conns[id];
+    var idx = net.order.indexOf(id);
+    if(idx !== -1) net.order.splice(idx, 1);
+    if(net.mode === 'host'){
+      broadcastPlayers();
+      checkAllReadyHost();
+    }
+  }
+  function handleHostData(id, data){
+    if(!data || !data.type) return;
+    if(data.type === 'join'){
+      net.conns[id].name = (data.name || '').toString().trim().slice(0,16) || 'Player';
+      if(net.order.indexOf(id) === -1) net.order.push(id);
+      broadcastPlayers();
+    } else if(data.type === 'ready'){
+      if(net.conns[id]){ net.conns[id].ready = true; }
+      checkAllReadyHost();
+    }
+  }
+  function createHostPeer(code, attempt){
+    if(net.peer){ try{ net.peer.destroy(); }catch(e){} }
+    net.mode = 'host';
+    net.roomCode = code;
+    $('roomCodeDisplay').textContent = code;
+    var peer = new Peer('false9-' + code);
+    net.peer = peer;
+    peer.on('open', function(){
+      showLobbyError('');
+      updateLobbyUI();
+    });
+    peer.on('connection', function(conn){
+      var id = conn.peer;
+      net.conns[id] = {conn: conn, name: '', ready:false};
+      conn.on('data', function(data){ handleHostData(id, data); });
+      conn.on('close', function(){ removeGuest(id); });
+      conn.on('error', function(){ removeGuest(id); });
+    });
+    peer.on('error', function(err){
+      if(net.mode !== 'host') return;
+      if(err && err.type === 'unavailable-id'){
+        if(attempt < 6){
+          createHostPeer(genRoomCode(), attempt+1);
+        } else {
+          showLobbyError('Could not create a room right now. Please try again.');
+        }
+      } else {
+        showLobbyError('Connection error. Please try again.');
+      }
+    });
+  }
+  function checkAllReadyHost(){
+    var total = 1 + net.order.length;
+    var readyCount = net.hostReady ? 1 : 0;
+    net.order.forEach(function(id){ if(net.conns[id] && net.conns[id].ready) readyCount++; });
+    if(total >= 1 && readyCount >= total && total > 0){
+      beginOnlineDiscuss();
+    }
+  }
+  function beginOnlineDiscuss(){
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({type:'discuss', duration: state.timeMinutes*60});
+    });
+    showScreen('screen-discuss');
+    resetTimerDisplay();
+  }
+  function startOnlineGame(){
+    var totalPlayers = 1 + net.order.length;
+    if(totalPlayers < 3) return;
+    var activePool = getPlayerPool();
+    var secret = pickSecret(activePool);
+    state.secretPlayer = secret;
+    state.decoyPlayer = pickDecoy(secret, activePool);
+    state.recentSecrets.push(secret.n);
+    var maxHistory = Math.max(1, Math.floor(activePool.length / 2));
+    if(state.recentSecrets.length > maxHistory){
+      state.recentSecrets = state.recentSecrets.slice(-maxHistory);
+    }
+
+    var order = [];
+    for(var i=0;i<totalPlayers;i++) order.push(i);
+    order = shuffle(order);
+    var impostorSet = {};
+    for(var k=0;k<state.impCount;k++){ impostorSet[order[k]] = true; }
+
+    var assignments = [];
+    for(var p=0;p<totalPlayers;p++){
+      assignments[p] = impostorSet[p] ?
+        {role:'impostor'} :
+        {role:'crew', name: secret.n, pos: secret.p};
+    }
+    state.assignments = assignments;
+
+    net.hostReady = false;
+    net.order.forEach(function(id, idx){
+      var c = net.conns[id];
+      if(c){
+        c.ready = false;
+        if(c.conn.open) c.conn.send({type:'assign', a: assignments[idx+1], decoyName: state.decoyPlayer.n});
+      }
+    });
+
+    enterOnlineReveal(assignments[0], state.decoyPlayer.n, net.myName || 'Host');
+  }
+  function triggerOnlineEnd(){
+    var names = [net.myName || 'Host'].concat(net.order.map(function(id){
+      return (net.conns[id] && net.conns[id].name) || 'Player';
+    }));
+    var impostorNames = [];
+    for(var i=0;i<state.assignments.length;i++){
+      if(state.assignments[i].role === 'impostor') impostorNames.push(names[i]);
+    }
+    var secretName = state.secretPlayer.n;
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({type:'end', impostors: impostorNames, secret: secretName});
+    });
+    renderEndFromNames(impostorNames, secretName);
+    updateEndScreenForOnline();
+    showScreen('screen-end');
+  }
+
+  $('hostRoomBtn').addEventListener('click', function(){
+    teardownNet();
+    net.mode = 'host';
+    net.myName = 'Host';
+    showLobbyError('');
+    $('roomCodeDisplay').textContent = '····';
+    $('startOnlineBtn').disabled = true;
+    showOnlinePanel('host');
+    createHostPeer(genRoomCode(), 0);
+  });
+  $('cancelHostBtn').addEventListener('click', function(){
+    teardownNet();
+    showOnlinePanel('choose');
+  });
+  $('startOnlineBtn').addEventListener('click', function(){
+    if(net.order.length < 2) return;
+    startOnlineGame();
+  });
+
+  // ---------- ONLINE: guest ----------
+  function updateJoinWaitUI(){
+    $('joinWaitName').textContent = net.myName;
+    renderPlayerListInto('joinWaitList', net.players);
+    $('joinWaitCount').textContent = net.players.length;
+  }
+  function handleHostLeft(){
+    teardownNet();
+    showScreen('screen-setup');
+    state.mode = 'online';
+    updateModeUI();
+    showOnlinePanel('choose');
+    showJoinError('Host left the room.');
+  }
+  function handleGuestData(data){
+    if(!data || !data.type) return;
+    if(data.type === 'players'){
+      net.players = data.players;
+      updateJoinWaitUI();
+    } else if(data.type === 'assign'){
+      net.myAssignment = data.a;
+      net.myDecoyName = data.decoyName;
+      enterOnlineReveal(net.myAssignment, net.myDecoyName, net.myName);
+    } else if(data.type === 'discuss'){
+      state.timerRemaining = data.duration;
+      $('timerDisplay').textContent = fmt(state.timerRemaining);
+      showScreen('screen-discuss');
+      updateDiscussUIForRole();
+    } else if(data.type === 'tick'){
+      state.timerRemaining = data.remaining;
+      $('timerDisplay').textContent = fmt(state.timerRemaining);
+    } else if(data.type === 'end'){
+      renderEndFromNames(data.impostors, data.secret);
+      updateEndScreenForOnline();
+      showScreen('screen-end');
+    } else if(data.type === 'closed'){
+      handleHostLeft();
+    }
+  }
+  function attemptJoin(code){
+    showJoinError('');
+    $('joinSubmitBtn').disabled = true;
+    if(net.peer){ try{ net.peer.destroy(); }catch(e){} }
+    net.mode = 'guest';
+    var peer = new Peer();
+    net.peer = peer;
+    var settled = false;
+    var failTimer = setTimeout(function(){
+      if(settled) return;
+      settled = true;
+      $('joinSubmitBtn').disabled = false;
+      showJoinError('Room not found — check the code and try again.');
+      try{ peer.destroy(); }catch(e){}
+    }, 10000);
+
+    peer.on('open', function(){
+      var conn = peer.connect('false9-' + code, {reliable:true});
+      net.hostConn = conn;
+      conn.on('open', function(){
+        if(settled) return;
+        settled = true;
+        clearTimeout(failTimer);
+        $('joinSubmitBtn').disabled = false;
+        conn.send({type:'join', name: net.myName});
+        net.players = [{name: net.myName, isHost:false}];
+        showOnlinePanel('joinWait');
+        updateJoinWaitUI();
+      });
+      conn.on('data', function(data){ handleGuestData(data); });
+      conn.on('close', function(){ if(conn._leaving) return; handleHostLeft(); });
+      conn.on('error', function(){
+        if(settled) return;
+        settled = true;
+        clearTimeout(failTimer);
+        $('joinSubmitBtn').disabled = false;
+        showJoinError('Room not found — check the code and try again.');
+      });
+    });
+    peer.on('error', function(err){
+      if(settled) return;
+      settled = true;
+      clearTimeout(failTimer);
+      $('joinSubmitBtn').disabled = false;
+      if(err && err.type === 'peer-unavailable'){
+        showJoinError('Room not found — check the code and try again.');
+      } else {
+        showJoinError('Connection error. Please try again.');
+      }
+    });
+  }
+
+  $('joinRoomBtn').addEventListener('click', function(){
+    teardownNet();
+    net.mode = 'guest';
+    showJoinError('');
+    showOnlinePanel('joinForm');
+  });
+  $('cancelJoinBtn').addEventListener('click', function(){
+    teardownNet();
+    showOnlinePanel('choose');
+  });
+  $('joinCodeInput').addEventListener('input', function(e){
+    e.target.value = e.target.value.toUpperCase();
+  });
+  $('joinSubmitBtn').addEventListener('click', function(){
+    var code = ($('joinCodeInput').value || '').trim().toUpperCase();
+    var name = ($('joinNameInput').value || '').trim().slice(0,16) || 'Player';
+    if(code.length !== 4){
+      showJoinError('Enter the 4-character room code.');
+      return;
+    }
+    net.myName = name;
+    attemptJoin(code);
+  });
+  $('leaveWaitBtn').addEventListener('click', function(){
+    teardownNet();
+    showOnlinePanel('choose');
   });
 
   // ---------- HOW TO PLAY ----------
@@ -1157,6 +1722,7 @@
 
   // init
   renderNameInputs();
+  updateModeUI();
   updateImpCap();
   updateDifficultyUI();
   try{
