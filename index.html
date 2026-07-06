@@ -1130,7 +1130,7 @@
       if(state.assignments[i].role === 'impostor') names.push(getDisplayName(i));
     }
     $('endImpostorName').textContent = names.join(' & ');
-    $('endSecretName').textContent = state.secretPlayer.n + ' (' + state.secretPlayer.p + ')';
+    $('endSecretName').textContent = state.secretPlayer.n;
   }
   $('playAgainBtn').addEventListener('click', startGame);
   $('newGameBtn').addEventListener('click', function(){
