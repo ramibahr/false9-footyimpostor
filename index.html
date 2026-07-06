@@ -376,7 +376,7 @@
       </div>
     </div>
 
-    <div class="field-card">
+    <div class="field-card" id="impostorsFieldCard">
       <div class="field-label">Impostors</div>
       <div class="stepper">
         <button type="button" data-act="imp-" aria-label="Fewer impostors">&#8722;</button>
@@ -386,7 +386,7 @@
       <div class="segmented-desc" id="impCapDesc"></div>
     </div>
 
-    <div class="field-card">
+    <div class="field-card" id="discussionFieldCard">
       <div class="field-label">Discussion time</div>
       <div class="stepper">
         <button type="button" data-act="time-" aria-label="Less time">&#8722;</button>
@@ -395,7 +395,7 @@
       </div>
     </div>
 
-    <div class="field-card">
+    <div class="field-card" id="difficultyFieldCard">
       <div class="field-label">Difficulty</div>
       <div class="segmented">
         <button type="button" data-difficulty="casual">Casual</button>
@@ -434,6 +434,7 @@
       </div>
       <div class="join-error hidden-ui" id="lobbyError"></div>
       <button type="button" class="btn-primary" id="startOnlineBtn" disabled>Start Game</button>
+      <div class="segmented-desc hidden-ui" id="startGameHint" style="text-align:center; margin-top:10px;"></div>
       <button type="button" class="btn-secondary" id="cancelHostBtn" style="margin-top:10px;">Cancel</button>
     </div>
 
@@ -1009,12 +1010,20 @@
       $(id).classList.add('hidden-ui');
     });
   }
+  function setGameSettingsHidden(hidden){
+    // Impostors/Discussion time/Difficulty are host-controlled only;
+    // guests never see them, whether filling the join form or waiting.
+    ['impostorsFieldCard','discussionFieldCard','difficultyFieldCard'].forEach(function(id){
+      $(id).classList.toggle('hidden-ui', hidden);
+    });
+  }
   function showOnlinePanel(name){
     hideAllOnlinePanels();
     if(name === 'choose') $('onlineChooseWrap').classList.remove('hidden-ui');
     if(name === 'host') $('hostLobbyWrap').classList.remove('hidden-ui');
     if(name === 'joinForm') $('joinFormWrap').classList.remove('hidden-ui');
     if(name === 'joinWait') $('joinWaitWrap').classList.remove('hidden-ui');
+    setGameSettingsHidden(name === 'joinForm' || name === 'joinWait');
   }
   function updateModeUI(){
     document.querySelectorAll('#modeToggle [data-mode]').forEach(function(b){
@@ -1024,7 +1033,7 @@
     $('playersFieldCard').classList.toggle('hidden-ui', isOnline);
     $('namesFieldCard').classList.toggle('hidden-ui', isOnline);
     $('localStartWrap').classList.toggle('hidden-ui', isOnline);
-    if(isOnline){ showOnlinePanel('choose'); } else { hideAllOnlinePanels(); }
+    if(isOnline){ showOnlinePanel('choose'); } else { hideAllOnlinePanels(); setGameSettingsHidden(false); }
     updateImpCap();
   }
   document.querySelectorAll('#modeToggle [data-mode]').forEach(function(btn){
@@ -1444,6 +1453,13 @@
     var startDisabled = net.order.length < 2;
     $('startOnlineBtn').disabled = startDisabled;
     console.log('updateLobbyUI: net.order.length =', net.order.length, '-> startOnlineBtn.disabled =', startDisabled);
+    var needed = 2 - net.order.length;
+    if(needed > 0){
+      $('startGameHint').textContent = 'Need at least ' + needed + ' more player' + (needed === 1 ? '' : 's') + ' to start';
+      $('startGameHint').classList.remove('hidden-ui');
+    } else {
+      $('startGameHint').classList.add('hidden-ui');
+    }
     updateImpCap();
   }
   function broadcastPlayers(){
@@ -1585,6 +1601,8 @@
     showLobbyError('');
     $('roomCodeDisplay').textContent = '····';
     $('startOnlineBtn').disabled = true;
+    $('startGameHint').textContent = 'Need at least 2 more players to start';
+    $('startGameHint').classList.remove('hidden-ui');
     showOnlinePanel('host');
     createHostPeer(genRoomCode(), 0);
   });
