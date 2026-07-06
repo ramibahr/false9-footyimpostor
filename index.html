@@ -1519,6 +1519,7 @@
   }
   function startOnlineGame(){
     var totalPlayers = 1 + net.order.length;
+    console.log('startOnlineGame called, total players:', totalPlayers, 'minimum required:', 3);
     if(totalPlayers < 3) return;
     var activePool = getPlayerPool();
     var secret = pickSecret(activePool);
@@ -1588,6 +1589,9 @@
     showOnlinePanel('choose');
   });
   $('startOnlineBtn').addEventListener('click', function(){
+    console.log('Start Game clicked');
+    console.log('connected peers/players:', net.order.length, net.order);
+    console.log('player count:', net.order.length, 'minimum required:', 2);
     if(net.order.length < 2) return;
     startOnlineGame();
   });
