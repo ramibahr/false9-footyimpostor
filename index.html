@@ -76,6 +76,13 @@
   }
   .badge-icon{ flex-shrink:0; display:block; }
   .brand{font-family:'Anton'; font-size:20px; letter-spacing:1px;}
+  .logo-home{
+    display:flex; align-items:center; gap:10px;
+    background:none; border:none; padding:0; margin:0;
+    cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+    transition: opacity .12s ease;
+  }
+  .logo-home:active{ opacity:0.7; }
   .help-btn{
     margin-left:auto; width:32px; height:32px; border-radius:50%;
     border:1px solid var(--pitch-line); background:rgba(242,246,238,0.06);
@@ -338,18 +345,20 @@
   </div>
 
   <header class="top">
-    <svg class="badge-icon" viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
-      <defs>
-        <linearGradient id="badgeBg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#1c5c3e"/>
-          <stop offset="100%" stop-color="#0A2E1F"/>
-        </linearGradient>
-      </defs>
-      <path d="M50,4 L88,18 L88,50 C88,74 72,90 50,97 C28,90 12,74 12,50 L12,18 Z" fill="url(#badgeBg)" stroke="#E7B33E" stroke-width="4"/>
-      <text x="58" y="72" font-family="Anton, sans-serif" font-size="58" fill="#E7B33E" opacity="0.32" text-anchor="middle">9</text>
-      <text x="44" y="66" font-family="Anton, sans-serif" font-size="58" fill="#E7B33E" text-anchor="middle">9</text>
-    </svg>
-    <div class="brand">FALSE<span style="color:var(--gold)">9</span></div>
+    <button type="button" class="logo-home" id="logoHomeBtn" aria-label="Go to home screen">
+      <svg class="badge-icon" viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
+        <defs>
+          <linearGradient id="badgeBg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1c5c3e"/>
+            <stop offset="100%" stop-color="#0A2E1F"/>
+          </linearGradient>
+        </defs>
+        <path d="M50,4 L88,18 L88,50 C88,74 72,90 50,97 C28,90 12,74 12,50 L12,18 Z" fill="url(#badgeBg)" stroke="#E7B33E" stroke-width="4"/>
+        <text x="58" y="72" font-family="Anton, sans-serif" font-size="58" fill="#E7B33E" opacity="0.32" text-anchor="middle">9</text>
+        <text x="44" y="66" font-family="Anton, sans-serif" font-size="58" fill="#E7B33E" text-anchor="middle">9</text>
+      </svg>
+      <div class="brand">FALSE<span style="color:var(--gold)">9</span></div>
+    </button>
     <button type="button" class="help-btn" id="helpBtn" aria-label="How to play">?</button>
   </header>
 
@@ -364,6 +373,14 @@
       <div class="segmented" id="modeToggle">
         <button type="button" data-mode="local" class="active">Pass &amp; Play</button>
         <button type="button" data-mode="online">Online</button>
+      </div>
+    </div>
+
+    <!-- ONLINE: choose host or join -->
+    <div id="onlineChooseWrap" class="hidden-ui" style="margin-bottom:14px;">
+      <div class="btn-row">
+        <button type="button" class="btn-primary" id="hostRoomBtn">Host a Room</button>
+        <button type="button" class="btn-secondary" id="joinRoomBtn">Join a Room</button>
       </div>
     </div>
 
@@ -411,14 +428,6 @@
 
     <div style="margin-top:6px;" id="localStartWrap">
       <button class="btn-primary" id="startBtn">Kick Off &#9917;</button>
-    </div>
-
-    <!-- ONLINE: choose host or join -->
-    <div id="onlineChooseWrap" class="hidden-ui" style="margin-top:6px;">
-      <div class="btn-row">
-        <button type="button" class="btn-primary" id="hostRoomBtn">Host a Room</button>
-        <button type="button" class="btn-secondary" id="joinRoomBtn">Join a Room</button>
-      </div>
     </div>
 
     <!-- ONLINE: host lobby -->
@@ -1401,12 +1410,16 @@
   $('newGameBtn').addEventListener('click', function(){
     showScreen('screen-setup');
   });
-  $('leaveRoomBtn').addEventListener('click', function(){
+  function goHome(){
+    clearInterval(state.timerHandle);
+    state.timerRunning = false;
     teardownNet();
     state.mode = 'local';
     updateModeUI();
     showScreen('screen-setup');
-  });
+  }
+  $('leaveRoomBtn').addEventListener('click', goHome);
+  $('logoHomeBtn').addEventListener('click', goHome);
 
   // ---------- ONLINE: shared helpers ----------
   function showJoinError(msg){

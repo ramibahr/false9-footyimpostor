@@ -1,7 +1,7 @@
 // Minimal offline-first service worker for False Nine.
 // Network-first: always try the live version, fall back to the last
 // cached copy if there's no connection.
-const CACHE_NAME = 'false9-v2';
+const CACHE_NAME = 'false9-v3';
 const CORE_ASSETS = ['./', './index.html'];
 
 self.addEventListener('install', (event) => {
