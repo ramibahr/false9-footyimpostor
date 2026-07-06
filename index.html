@@ -37,6 +37,7 @@
     width:100%;
     overscroll-behavior:none;
     touch-action:none;
+    background:#0A2E1F;
   }
   body{
     margin:0;
@@ -65,6 +66,11 @@
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
     touch-action:pan-y;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+  .app::-webkit-scrollbar{
+    display:none;
   }
   h1,h2,h3{font-family:'Anton',sans-serif; font-weight:400; letter-spacing:0.5px; margin:0;}
   .eyebrow{
