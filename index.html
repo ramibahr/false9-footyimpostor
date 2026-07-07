@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>False 9 - Football Impostor Game</title>
 <style>
   :root{
@@ -18,7 +18,7 @@
     --shadow: 0 20px 40px rgba(0,0,0,0.35);
     --radius: 22px;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; touch-action:manipulation;}
   html,body{
     height:100%;
     overflow:hidden;
@@ -316,6 +316,12 @@
 
   /* Discuss screen */
   .discuss-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .discuss-starter{
+    font-family:'Inter'; font-weight:600; font-size:14px; color:var(--chalk);
+    background:rgba(231,179,62,0.12); border:1px solid rgba(231,179,62,0.35);
+    border-radius:12px; padding:10px 16px; margin-bottom:18px; text-align:center;
+  }
+  .discuss-starter:empty{ display:none; }
   .timer-big{ font-family:'Space Mono'; font-size:72px; font-weight:700; letter-spacing:2px; margin:10px 0 6px; }
   .timer-sub{ color:var(--chalk-dim); font-size:14px; margin-bottom:30px; }
   .timer-controls{ display:flex; gap:12px; width:100%; max-width:320px; }
@@ -553,6 +559,7 @@
   <section class="screen" id="screen-discuss">
     <div class="discuss-wrap">
       <div class="eyebrow">Discussion</div>
+      <div class="discuss-starter" id="discussStarterNote"></div>
       <div class="timer-big" id="timerDisplay">03:00</div>
       <div class="timer-sub">Ask questions. Watch for hesitation. Find the impostor.</div>
       <div class="timer-controls" id="timerControls">
@@ -1362,9 +1369,13 @@
     }, 350);
   });
 
+  function setDiscussStarterNote(name){
+    $('discussStarterNote').textContent = name + ' starts — go clockwise from there.';
+  }
   $('nextRevealBtn').addEventListener('click', function(){
     state.revealIdx++;
     if(state.revealIdx >= state.playerCount){
+      setDiscussStarterNote(getDisplayName(Math.floor(Math.random() * state.playerCount)));
       showScreen('screen-discuss');
       resetTimerDisplay();
     } else {
@@ -1610,10 +1621,13 @@
     }
   }
   function beginOnlineDiscuss(){
+    var roster = getRosterNames();
+    var starterName = roster[Math.floor(Math.random() * roster.length)].name;
     net.order.forEach(function(id){
       var c = net.conns[id];
-      if(c && c.conn.open) c.conn.send({type:'discuss', duration: state.timeMinutes*60});
+      if(c && c.conn.open) c.conn.send({type:'discuss', duration: state.timeMinutes*60, starter: starterName});
     });
+    setDiscussStarterNote(starterName);
     showScreen('screen-discuss');
     resetTimerDisplay();
   }
@@ -1725,6 +1739,7 @@
     } else if(data.type === 'discuss'){
       state.timerRemaining = data.duration;
       $('timerDisplay').textContent = fmt(state.timerRemaining);
+      setDiscussStarterNote(data.starter);
       showScreen('screen-discuss');
       updateDiscussUIForRole();
     } else if(data.type === 'tick'){
