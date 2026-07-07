@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
 Sitemap: https://false9impostor.com/sitemap.xml
