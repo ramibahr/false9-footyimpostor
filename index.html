@@ -76,6 +76,14 @@
   }
   .badge-icon{ flex-shrink:0; display:block; }
   .brand{font-family:'Anton'; font-size:20px; letter-spacing:1px;}
+  .back-btn{
+    width:32px; height:32px; border-radius:50%;
+    border:1px solid var(--pitch-line); background:rgba(242,246,238,0.06);
+    color:var(--chalk-dim); cursor:pointer; touch-action:manipulation; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, transform .12s ease;
+  }
+  .back-btn:active{ transform:scale(0.92); background:rgba(242,246,238,0.14); }
   .logo-home{
     display:flex; align-items:center; gap:10px;
     background:none; border:none; padding:0; margin:0;
@@ -345,6 +353,11 @@
   </div>
 
   <header class="top">
+    <button type="button" class="back-btn hidden-ui" id="backBtn" aria-label="Back">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M15 4 L7 12 L15 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <button type="button" class="logo-home" id="logoHomeBtn" aria-label="Go to home screen">
       <svg class="badge-icon" viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
         <defs>
@@ -444,6 +457,7 @@
       <div class="join-error hidden-ui" id="lobbyError"></div>
       <button type="button" class="btn-primary" id="startOnlineBtn" disabled>Start Game</button>
       <div class="segmented-desc hidden-ui" id="startGameHint" style="text-align:center; margin-top:10px;"></div>
+      <button type="button" class="reveal-link" id="switchToJoinBtn" style="display:block; margin:14px auto 0; text-align:center;">Join a room instead</button>
       <button type="button" class="btn-secondary" id="cancelHostBtn" style="margin-top:10px;">Cancel</button>
     </div>
 
@@ -459,6 +473,7 @@
       </div>
       <div class="join-error hidden-ui" id="joinError"></div>
       <button type="button" class="btn-primary" id="joinSubmitBtn">Join</button>
+      <button type="button" class="reveal-link" id="switchToHostBtn" style="display:block; margin:14px auto 0; text-align:center;">Host a room instead</button>
       <button type="button" class="btn-secondary" id="cancelJoinBtn" style="margin-top:10px;">Cancel</button>
     </div>
 
@@ -1011,9 +1026,25 @@
     var screens = document.querySelectorAll('.screen');
     for(var i=0;i<screens.length;i++){ screens[i].classList.remove('active'); }
     $(id).classList.add('active');
+    updateBackButtonVisibility();
   }
 
   // ---------- MODE TOGGLE ----------
+  var currentOnlinePanel = 'choose';
+  function updateBackButtonVisibility(){
+    var onSetup = $('screen-setup').classList.contains('active');
+    var visible = onSetup ? (state.mode === 'online' && currentOnlinePanel !== 'choose') : true;
+    $('backBtn').classList.toggle('hidden-ui', !visible);
+  }
+  function goBack(){
+    var onSetup = $('screen-setup').classList.contains('active');
+    if(onSetup && state.mode === 'online' && currentOnlinePanel !== 'choose'){
+      teardownNet();
+      showOnlinePanel('choose');
+    } else {
+      goHome();
+    }
+  }
   function hideAllOnlinePanels(){
     ['onlineChooseWrap','hostLobbyWrap','joinFormWrap','joinWaitWrap'].forEach(function(id){
       $(id).classList.add('hidden-ui');
@@ -1033,6 +1064,8 @@
     if(name === 'joinForm') $('joinFormWrap').classList.remove('hidden-ui');
     if(name === 'joinWait') $('joinWaitWrap').classList.remove('hidden-ui');
     setGameSettingsHidden(name === 'joinForm' || name === 'joinWait');
+    currentOnlinePanel = name;
+    updateBackButtonVisibility();
   }
   function updateModeUI(){
     document.querySelectorAll('#modeToggle [data-mode]').forEach(function(b){
@@ -1042,8 +1075,9 @@
     $('playersFieldCard').classList.toggle('hidden-ui', isOnline);
     $('namesFieldCard').classList.toggle('hidden-ui', isOnline);
     $('localStartWrap').classList.toggle('hidden-ui', isOnline);
-    if(isOnline){ showOnlinePanel('choose'); } else { hideAllOnlinePanels(); setGameSettingsHidden(false); }
+    if(isOnline){ showOnlinePanel('choose'); } else { hideAllOnlinePanels(); setGameSettingsHidden(false); currentOnlinePanel = 'choose'; }
     updateImpCap();
+    updateBackButtonVisibility();
   }
   document.querySelectorAll('#modeToggle [data-mode]').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -1420,6 +1454,7 @@
   }
   $('leaveRoomBtn').addEventListener('click', goHome);
   $('logoHomeBtn').addEventListener('click', goHome);
+  $('backBtn').addEventListener('click', goBack);
 
   // ---------- ONLINE: shared helpers ----------
   function showJoinError(msg){
@@ -1607,7 +1642,7 @@
     showScreen('screen-end');
   }
 
-  $('hostRoomBtn').addEventListener('click', function(){
+  function goToHostLobby(){
     teardownNet();
     net.mode = 'host';
     net.myName = 'Host';
@@ -1618,7 +1653,9 @@
     $('startGameHint').classList.remove('hidden-ui');
     showOnlinePanel('host');
     createHostPeer(genRoomCode(), 0);
-  });
+  }
+  $('hostRoomBtn').addEventListener('click', goToHostLobby);
+  $('switchToHostBtn').addEventListener('click', goToHostLobby);
   $('cancelHostBtn').addEventListener('click', function(){
     teardownNet();
     showOnlinePanel('choose');
@@ -1722,12 +1759,14 @@
     });
   }
 
-  $('joinRoomBtn').addEventListener('click', function(){
+  function goToJoinForm(){
     teardownNet();
     net.mode = 'guest';
     showJoinError('');
     showOnlinePanel('joinForm');
-  });
+  }
+  $('joinRoomBtn').addEventListener('click', goToJoinForm);
+  $('switchToJoinBtn').addEventListener('click', goToJoinForm);
   $('cancelJoinBtn').addEventListener('click', function(){
     teardownNet();
     showOnlinePanel('choose');
