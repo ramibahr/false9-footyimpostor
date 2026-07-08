@@ -337,13 +337,45 @@
   .timer-sub{ color:var(--chalk-dim); font-size:14px; margin-bottom:30px; text-align:center; }
   .reveal-link{ margin-top:36px; background:none; border:none; color:var(--gold); font-family:'Inter'; font-weight:600; font-size:16px; text-decoration:underline; cursor:pointer; touch-action: manipulation; }
 
+  /* Vote screen */
+  .vote-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
+  .vote-prompt{ font-family:'Anton'; font-size:24px; text-align:center; margin-bottom:22px; }
+  .vote-list{ width:100%; max-width:340px; display:flex; flex-direction:column; gap:10px; }
+  .vote-option{
+    width:100%; text-align:left; background:rgba(242,246,238,0.05); border:1px solid var(--pitch-line);
+    border-radius:14px; padding:16px 18px; color:var(--chalk); font-family:'Inter'; font-weight:600; font-size:16px;
+    cursor:pointer; touch-action:manipulation; transition: transform .12s ease, background .15s ease;
+  }
+  .vote-option:active{ transform:scale(0.97); background:rgba(242,246,238,0.1); }
+  .vote-waiting-note{ text-align:center; margin-top:6px; }
+  .tally-now-btn{ width:100%; max-width:340px; margin-top:18px; }
+
   /* End screen */
   .end-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .vote-outcome{ margin-bottom:16px; }
+  .vote-outcome-tag{ font-family:'Anton'; font-size:22px; letter-spacing:0.5px; }
+  .vote-outcome-tag.correct{ color:var(--green-safe); }
+  .vote-outcome-tag.wrong{ color:var(--red); }
+  .vote-outcome-detail{ color:var(--chalk-dim); font-size:13px; margin-top:4px; }
   .impostor-tag{ font-family:'Space Mono'; letter-spacing:2px; color:var(--red); font-size:13px; text-transform:uppercase; margin-bottom:10px; }
   .impostor-name{ font-family:'Anton'; font-size:36px; margin-bottom:6px; }
   .secret-box{ margin-top:26px; background:var(--pitch-mid); border:1px solid var(--pitch-line); border-radius:18px; padding:16px 20px; }
   .secret-box .k{ font-family:'Space Mono'; font-size:12px; color:var(--chalk-dim); letter-spacing:1.5px; text-transform:uppercase; }
   .secret-box .v{ font-family:'Anton'; font-size:22px; margin-top:4px; }
+  .score-changes{ width:100%; max-width:340px; margin-top:22px; display:flex; flex-direction:column; gap:6px; }
+  .score-change-row{
+    display:flex; justify-content:space-between; align-items:center; font-family:'Inter'; font-size:14px;
+    background:rgba(242,246,238,0.05); border:1px solid var(--pitch-line); border-radius:10px; padding:8px 14px;
+  }
+  .score-change-row .delta{ font-family:'Space Mono'; font-weight:700; }
+  .score-change-row .delta.positive{ color:var(--gold); }
+  .score-change-row .delta.zero{ color:var(--chalk-dim); }
+  .leaderboard{ width:100%; max-width:340px; margin-top:22px; background:var(--pitch-mid); border:1px solid var(--pitch-line); border-radius:var(--radius); padding:16px 18px; }
+  .leaderboard-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .leaderboard-row{ display:flex; align-items:center; font-family:'Inter'; font-size:14px; }
+  .leaderboard-row .rank{ font-family:'Space Mono'; color:var(--chalk-dim); width:22px; flex-shrink:0; }
+  .leaderboard-row .name{ flex:1; text-align:left; padding-right:8px; }
+  .leaderboard-row .pts{ font-family:'Anton'; color:var(--gold); flex-shrink:0; }
   .end-actions{ width:100%; max-width:320px; margin-top:34px; display:flex; flex-direction:column; gap:10px; }
 
   @media (prefers-reduced-motion: reduce){
@@ -568,19 +600,42 @@
       <div class="discuss-starter" id="discussStarterNote"></div>
       <div class="rounds-note" id="roundsNote"></div>
       <div class="timer-sub">Ask questions. Watch for hesitation. Find the impostor.</div>
-      <button class="reveal-link" id="goToVoteBtn">Reveal the impostor</button>
+      <button class="reveal-link" id="goToVoteBtn">Time to Vote</button>
+    </div>
+  </section>
+
+  <!-- VOTE SCREEN -->
+  <section class="screen" id="screen-vote">
+    <div class="vote-wrap">
+      <div class="eyebrow">Vote</div>
+      <div class="vote-prompt" id="votePrompt">Who does the group think it is?</div>
+      <div class="vote-list" id="voteList"></div>
+      <div class="segmented-desc hidden-ui vote-waiting-note" id="voteWaitingNote"></div>
+      <button type="button" class="btn-secondary tally-now-btn hidden-ui" id="tallyNowBtn">Tally Now</button>
     </div>
   </section>
 
   <!-- END SCREEN -->
   <section class="screen" id="screen-end">
     <div class="end-wrap">
+      <div class="vote-outcome" id="voteOutcome">
+        <div class="vote-outcome-tag" id="voteOutcomeTag"></div>
+        <div class="vote-outcome-detail" id="voteOutcomeDetail"></div>
+      </div>
+
       <div class="impostor-tag">The impostor was</div>
       <div class="impostor-name" id="endImpostorName">TBD</div>
 
       <div class="secret-box">
         <div class="k">The footballer was</div>
         <div class="v" id="endSecretName">TBD</div>
+      </div>
+
+      <div class="score-changes" id="scoreChanges"></div>
+
+      <div class="leaderboard" id="leaderboard">
+        <div class="field-label" style="justify-content:center;">Leaderboard</div>
+        <div class="leaderboard-list" id="leaderboardList"></div>
       </div>
 
       <div class="end-actions">
@@ -964,7 +1019,8 @@
     secretPlayer: null,
     decoyPlayer: null,
     recentSecrets: [], // names used in the last few rounds, avoided next pick
-    revealIdx: 0
+    revealIdx: 0,
+    scores: {} // display name -> points, persists across Play Again, cleared on New Setup
   };
 
   // ---------- ONLINE MULTIPLAYER ----------
@@ -986,7 +1042,9 @@
       hostReady: false, // host's own reveal-ready flag
       players: [],      // guest: last roster broadcast from host
       myAssignment: null, // guest: {role, name, pos}
-      myDecoyName: null
+      myDecoyName: null,
+      votes: {},        // host: voterId -> targetId
+      voteRoster: []    // {id, name, isHost} snapshot captured when voting begins
     };
   }
   var net = freshNet();
@@ -1474,13 +1532,120 @@
   }
   $('goToVoteBtn').addEventListener('click', function(){
     if(state.mode === 'online' && net.mode !== 'host') return;
-    if(state.mode === 'online' && net.mode === 'host'){
-      triggerOnlineEnd();
+    if(state.mode === 'online'){
+      beginOnlineVote();
     } else {
-      renderEnd();
-      showScreen('screen-end');
+      showScreen('screen-vote');
+      renderVoteScreenLocal();
     }
   });
+
+  // ---------- SCORING ----------
+  function addScore(name, delta){
+    state.scores[name] = (state.scores[name] || 0) + delta;
+  }
+  function resetScores(){
+    state.scores = {};
+  }
+  function getCurrentRosterNames(){
+    if(state.mode === 'online'){
+      var roster = (net.mode === 'host') ? getRosterNames() : (net.voteRoster.length ? net.voteRoster : net.players);
+      return roster.map(function(p){ return p.name; });
+    }
+    var names = [];
+    for(var i=0;i<state.playerCount;i++) names.push(getDisplayName(i));
+    return names;
+  }
+  function renderVoteOutcome(accusedName, wasCorrect){
+    var tag = $('voteOutcomeTag');
+    tag.textContent = wasCorrect ? 'Correct!' : 'Wrong!';
+    tag.className = 'vote-outcome-tag ' + (wasCorrect ? 'correct' : 'wrong');
+    $('voteOutcomeDetail').textContent = accusedName ? ('The group accused ' + accusedName + '.') : 'No votes were cast.';
+  }
+  function renderScoreChanges(deltaMap){
+    var wrap = $('scoreChanges');
+    wrap.innerHTML = '';
+    getCurrentRosterNames().forEach(function(name){
+      var delta = deltaMap[name] || 0;
+      var row = document.createElement('div');
+      row.className = 'score-change-row';
+      var nameEl = document.createElement('div');
+      nameEl.textContent = name;
+      var deltaEl = document.createElement('div');
+      deltaEl.className = 'delta ' + (delta > 0 ? 'positive' : 'zero');
+      deltaEl.textContent = (delta > 0 ? '+' : '') + delta;
+      row.appendChild(nameEl);
+      row.appendChild(deltaEl);
+      wrap.appendChild(row);
+    });
+  }
+  function renderLeaderboard(){
+    var rows = getCurrentRosterNames().map(function(name){
+      return { name: name, pts: state.scores[name] || 0 };
+    });
+    rows.sort(function(a, b){ return b.pts - a.pts; });
+    var wrap = $('leaderboardList');
+    wrap.innerHTML = '';
+    rows.forEach(function(r, idx){
+      var row = document.createElement('div');
+      row.className = 'leaderboard-row';
+      var rank = document.createElement('div');
+      rank.className = 'rank';
+      rank.textContent = (idx + 1) + '.';
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = r.name;
+      var pts = document.createElement('div');
+      pts.className = 'pts';
+      pts.textContent = r.pts;
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(pts);
+      wrap.appendChild(row);
+    });
+  }
+
+  // ---------- VOTE: local ----------
+  function renderVoteScreenLocal(){
+    $('votePrompt').textContent = 'Who does the group think it is?';
+    $('voteWaitingNote').classList.add('hidden-ui');
+    $('tallyNowBtn').classList.add('hidden-ui');
+    var wrap = $('voteList');
+    wrap.innerHTML = '';
+    for(var i=0;i<state.playerCount;i++){
+      (function(i){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'vote-option';
+        btn.textContent = getDisplayName(i);
+        btn.addEventListener('click', function(){ castLocalVote(i); });
+        wrap.appendChild(btn);
+      })(i);
+    }
+  }
+  function castLocalVote(idx){
+    playCardFlip();
+    if(navigator.vibrate) navigator.vibrate([20]);
+    var isImpostorPick = state.assignments[idx].role === 'impostor';
+    var deltaMap = {};
+    for(var i=0;i<state.playerCount;i++){
+      var name = getDisplayName(i);
+      var role = state.assignments[i].role;
+      if(isImpostorPick && role === 'crew'){
+        addScore(name, 1);
+        deltaMap[name] = (deltaMap[name] || 0) + 1;
+      } else if(!isImpostorPick && role === 'impostor'){
+        addScore(name, 2);
+        deltaMap[name] = (deltaMap[name] || 0) + 2;
+      }
+    }
+    renderEnd();
+    renderVoteOutcome(getDisplayName(idx), isImpostorPick);
+    renderScoreChanges(deltaMap);
+    renderLeaderboard();
+    updateEndScreenForOnline();
+    showScreen('screen-end');
+  }
 
   // ---------- END ----------
   function renderEndFromNames(impostorNames, secretName){
@@ -1511,9 +1676,11 @@
     }
   });
   $('newGameBtn').addEventListener('click', function(){
+    resetScores();
     showScreen('screen-setup');
   });
   function goHome(){
+    resetScores();
     teardownNet();
     state.mode = 'local';
     updateModeUI();
@@ -1553,10 +1720,10 @@
 
   // ---------- ONLINE: host ----------
   function getRosterNames(){
-    var arr = [{name: net.myName || 'Host', isHost:true}];
+    var arr = [{id:'host', name: net.myName || 'Host', isHost:true}];
     net.order.forEach(function(id){
       var c = net.conns[id];
-      if(c) arr.push({name: c.name || 'Player', isHost:false});
+      if(c) arr.push({id:id, name: c.name || 'Player', isHost:false});
     });
     return arr;
   }
@@ -1603,6 +1770,10 @@
     } else if(data.type === 'ready'){
       if(net.conns[id]){ net.conns[id].ready = true; }
       checkAllReadyHost();
+    } else if(data.type === 'vote'){
+      net.votes[id] = data.targetId;
+      broadcastVoteProgress();
+      maybeFinalizeOnlineVote();
     }
   }
   function createHostPeer(code, attempt){
@@ -1694,23 +1865,158 @@
 
     enterOnlineReveal(assignments[0], state.decoyPlayer.n, net.myName || 'Host');
   }
-  function triggerOnlineEnd(){
-    var names = [net.myName || 'Host'].concat(net.order.map(function(id){
-      return (net.conns[id] && net.conns[id].name) || 'Player';
-    }));
-    var impostorNames = [];
-    for(var i=0;i<state.assignments.length;i++){
-      if(state.assignments[i].role === 'impostor') impostorNames.push(names[i]);
+  // ---------- VOTE: online ----------
+  var myVoteSubmitted = false;
+  function myOnlineId(){
+    return net.mode === 'host' ? 'host' : (net.peer && net.peer.id);
+  }
+  function updateVoteProgressUI(voted, total){
+    if(!myVoteSubmitted) return;
+    var note = $('voteWaitingNote');
+    note.textContent = 'Waiting for others... (' + voted + ' of ' + total + ' voted)';
+    note.classList.remove('hidden-ui');
+  }
+  function renderVoteScreenOnline(roster){
+    $('votePrompt').textContent = 'Who does the group think it is?';
+    myVoteSubmitted = false;
+    $('voteWaitingNote').classList.add('hidden-ui');
+    $('tallyNowBtn').classList.toggle('hidden-ui', net.mode !== 'host');
+    var myId = myOnlineId();
+    var wrap = $('voteList');
+    wrap.innerHTML = '';
+    roster.forEach(function(p){
+      if(p.id === myId) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vote-option';
+      btn.textContent = p.name;
+      btn.addEventListener('click', function(){ castOnlineVote(p.id); });
+      wrap.appendChild(btn);
+    });
+  }
+  function castOnlineVote(targetId){
+    playCardFlip();
+    if(navigator.vibrate) navigator.vibrate([20]);
+    $('voteList').innerHTML = '';
+    myVoteSubmitted = true;
+    $('voteWaitingNote').textContent = 'Waiting for others...';
+    $('voteWaitingNote').classList.remove('hidden-ui');
+    if(net.mode === 'host'){
+      net.votes.host = targetId;
+      broadcastVoteProgress();
+      maybeFinalizeOnlineVote();
+    } else if(net.hostConn && net.hostConn.open){
+      net.hostConn.send({type:'vote', targetId: targetId});
     }
-    var secretName = state.secretPlayer.n;
+  }
+  function broadcastVoteProgress(){
+    var total = 1 + net.order.length;
+    var voted = Object.keys(net.votes).length;
     net.order.forEach(function(id){
       var c = net.conns[id];
-      if(c && c.conn.open) c.conn.send({type:'end', impostors: impostorNames, secret: secretName});
+      if(c && c.conn.open) c.conn.send({type:'vote_progress', voted: voted, total: total});
     });
+    updateVoteProgressUI(voted, total);
+  }
+  function maybeFinalizeOnlineVote(){
+    var total = 1 + net.order.length;
+    var voted = Object.keys(net.votes).length;
+    if(voted >= total) finalizeOnlineVote();
+  }
+  function getAssignmentForId(id){
+    if(id === 'host') return state.assignments[0];
+    var idx = net.order.indexOf(id);
+    return idx === -1 ? null : state.assignments[idx+1];
+  }
+  function getImpostorIdSet(){
+    var set = {};
+    net.voteRoster.forEach(function(p){
+      var a = getAssignmentForId(p.id);
+      if(a && a.role === 'impostor') set[p.id] = true;
+    });
+    return set;
+  }
+  function computeAccusedId(counts, impostorIdSet){
+    var ids = Object.keys(counts);
+    if(!ids.length) return null;
+    var maxVotes = -1;
+    ids.forEach(function(id){ if(counts[id] > maxVotes) maxVotes = counts[id]; });
+    var topIds = ids.filter(function(id){ return counts[id] === maxVotes; });
+    var impostorTop = topIds.filter(function(id){ return impostorIdSet[id]; });
+    return impostorTop.length ? impostorTop[0] : topIds[0];
+  }
+  function finalizeOnlineVote(){
+    var roster = net.voteRoster;
+    var nameById = {};
+    roster.forEach(function(p){ nameById[p.id] = p.name; });
+    var impostorIdSet = getImpostorIdSet();
+
+    var counts = {};
+    Object.keys(net.votes).forEach(function(voterId){
+      var targetId = net.votes[voterId];
+      counts[targetId] = (counts[targetId] || 0) + 1;
+    });
+    var accusedId = computeAccusedId(counts, impostorIdSet);
+    var groupCorrect = !!(accusedId && impostorIdSet[accusedId]);
+
+    var deltaMap = {};
+    Object.keys(net.votes).forEach(function(voterId){
+      var voterAssignment = getAssignmentForId(voterId);
+      if(voterAssignment && voterAssignment.role === 'crew' && impostorIdSet[net.votes[voterId]]){
+        var voterName = nameById[voterId];
+        addScore(voterName, 1);
+        deltaMap[voterName] = (deltaMap[voterName] || 0) + 1;
+      }
+    });
+    if(!groupCorrect){
+      roster.forEach(function(p){
+        if(impostorIdSet[p.id]){
+          addScore(p.name, 2);
+          deltaMap[p.name] = (deltaMap[p.name] || 0) + 2;
+        }
+      });
+    }
+
+    var impostorNames = roster.filter(function(p){ return impostorIdSet[p.id]; }).map(function(p){ return p.name; });
+    var secretName = state.secretPlayer.n;
+    var accusedName = accusedId ? nameById[accusedId] : null;
+
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({
+        type: 'vote_result',
+        impostors: impostorNames,
+        secret: secretName,
+        accusedName: accusedName,
+        correct: groupCorrect,
+        deltas: deltaMap,
+        scores: state.scores
+      });
+    });
+
     renderEndFromNames(impostorNames, secretName);
+    renderVoteOutcome(accusedName, groupCorrect);
+    renderScoreChanges(deltaMap);
+    renderLeaderboard();
     updateEndScreenForOnline();
     showScreen('screen-end');
   }
+  function beginOnlineVote(){
+    if(net.mode !== 'host') return;
+    var roster = getRosterNames();
+    net.votes = {};
+    net.voteRoster = roster;
+    net.order.forEach(function(id){
+      var c = net.conns[id];
+      if(c && c.conn.open) c.conn.send({type:'vote_start', players: roster});
+    });
+    showScreen('screen-vote');
+    renderVoteScreenOnline(roster);
+  }
+  $('tallyNowBtn').addEventListener('click', function(){
+    if(net.mode !== 'host') return;
+    finalizeOnlineVote();
+  });
 
   function goToHostLobby(){
     teardownNet();
@@ -1765,8 +2071,18 @@
       setDiscussStarterNote(data.starter);
       showScreen('screen-discuss');
       enterDiscussion();
-    } else if(data.type === 'end'){
+    } else if(data.type === 'vote_start'){
+      net.voteRoster = data.players;
+      showScreen('screen-vote');
+      renderVoteScreenOnline(data.players);
+    } else if(data.type === 'vote_progress'){
+      updateVoteProgressUI(data.voted, data.total);
+    } else if(data.type === 'vote_result'){
+      state.scores = data.scores;
       renderEndFromNames(data.impostors, data.secret);
+      renderVoteOutcome(data.accusedName, data.correct);
+      renderScoreChanges(data.deltas);
+      renderLeaderboard();
       updateEndScreenForOnline();
       showScreen('screen-end');
     } else if(data.type === 'closed'){
