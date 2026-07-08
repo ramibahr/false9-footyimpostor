@@ -1206,9 +1206,9 @@
   }
 
   function maxImpostorsFor(playerCount){
-    // Always leave crew in the majority (at least 3 crew), but stop being
-    // stuck at 1 impostor just because the group is small.
-    return Math.max(1, Math.min(4, playerCount - 3));
+    // Always leave crew in the majority, but scale the cap up for larger
+    // groups instead of sticking at a low fixed cap.
+    return Math.max(1, Math.min(5, Math.floor(playerCount / 3)));
   }
 
   function effectivePlayerCount(){
@@ -1228,7 +1228,7 @@
     btn.addEventListener('click', function(){
       var act = btn.getAttribute('data-act');
       if(act==='players-'){ state.playerCount = Math.max(3, state.playerCount-1); renderNameInputs(); updateImpCap(); }
-      if(act==='players+'){ state.playerCount = Math.min(12, state.playerCount+1); renderNameInputs(); updateImpCap(); }
+      if(act==='players+'){ state.playerCount = Math.min(16, state.playerCount+1); renderNameInputs(); updateImpCap(); }
       if(act==='imp-'){ state.impCount = Math.max(1, state.impCount-1); }
       if(act==='imp+'){ state.impCount = Math.min(maxImpostorsFor(effectivePlayerCount()), state.impCount+1); }
       if(act==='rounds-'){ state.rounds = Math.max(1, state.rounds-1); }
