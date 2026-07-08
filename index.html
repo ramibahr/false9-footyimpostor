@@ -333,14 +333,9 @@
     border-radius:12px; padding:10px 16px; margin-bottom:18px; text-align:center;
   }
   .discuss-starter:empty{ display:none; }
-  .timer-big{ font-family:'Space Mono'; font-size:72px; font-weight:700; letter-spacing:2px; margin:10px 0 6px; }
-  .timer-sub{ color:var(--chalk-dim); font-size:14px; margin-bottom:30px; }
-  .timer-controls{ display:flex; gap:12px; width:100%; max-width:320px; }
-  .icon-btn{
-    flex:1; padding:16px; border-radius:14px; border:1px solid var(--pitch-line); background:rgba(242,246,238,0.05); color:var(--chalk);
-    font-family:'Inter'; font-weight:600; font-size:14px; cursor:pointer; touch-action: manipulation;
-  }
-  .icon-btn:active{ transform:scale(0.96); }
+  .round-big{ font-family:'Anton'; font-size:34px; letter-spacing:0.5px; margin:10px 0 6px; text-align:center; }
+  .timer-sub{ color:var(--chalk-dim); font-size:14px; margin-bottom:30px; text-align:center; }
+  .discuss-actions{ width:100%; max-width:320px; }
   .reveal-link{ margin-top:36px; background:none; border:none; color:var(--gold); font-family:'Inter'; font-weight:600; font-size:16px; text-decoration:underline; cursor:pointer; touch-action: manipulation; }
 
   /* End screen */
@@ -460,12 +455,13 @@
     </div>
 
     <div class="field-card" id="discussionFieldCard">
-      <div class="field-label">Discussion time</div>
+      <div class="field-label">Rounds</div>
       <div class="stepper">
-        <button type="button" data-act="time-" aria-label="Less time">&#8722;</button>
-        <div class="val" id="timeVal">3<span style="font-size:16px;opacity:.7">m</span></div>
-        <button type="button" data-act="time+" aria-label="More time">&#43;</button>
+        <button type="button" data-act="rounds-" aria-label="Fewer rounds">&#8722;</button>
+        <div class="val" id="roundsVal">3</div>
+        <button type="button" data-act="rounds+" aria-label="More rounds">&#43;</button>
       </div>
+      <div class="segmented-desc">Everyone takes a turn each round, then the group advances together.</div>
     </div>
 
     <div class="field-card" id="difficultyFieldCard">
@@ -571,11 +567,10 @@
     <div class="discuss-wrap">
       <div class="eyebrow">Discussion</div>
       <div class="discuss-starter" id="discussStarterNote"></div>
-      <div class="timer-big" id="timerDisplay">03:00</div>
+      <div class="round-big" id="roundDisplay">Round 1 of 3</div>
       <div class="timer-sub">Ask questions. Watch for hesitation. Find the impostor.</div>
-      <div class="timer-controls" id="timerControls">
-        <button class="icon-btn" id="timerStartPause">Start</button>
-        <button class="icon-btn" id="timerReset">Reset</button>
+      <div class="discuss-actions" id="discussActions">
+        <button class="btn-primary" id="nextRoundBtn">Next Round</button>
       </div>
       <button class="reveal-link" id="goToVoteBtn">Reveal the impostor</button>
     </div>
@@ -960,7 +955,7 @@
     mode: 'local', // 'local' | 'online'
     playerCount: 5,
     impCount: 1,
-    timeMinutes: 3,
+    rounds: 3,
     difficulty: 'casual',
     names: [],
     order: [],       // shuffled indices of players 0..playerCount-1
@@ -969,9 +964,7 @@
     decoyPlayer: null,
     recentSecrets: [], // names used in the last few rounds, avoided next pick
     revealIdx: 0,
-    timerRemaining: 180,
-    timerRunning: false,
-    timerHandle: null
+    currentRound: 1
   };
 
   // ---------- ONLINE MULTIPLAYER ----------
@@ -1238,11 +1231,11 @@
       if(act==='players+'){ state.playerCount = Math.min(12, state.playerCount+1); renderNameInputs(); updateImpCap(); }
       if(act==='imp-'){ state.impCount = Math.max(1, state.impCount-1); }
       if(act==='imp+'){ state.impCount = Math.min(maxImpostorsFor(effectivePlayerCount()), state.impCount+1); }
-      if(act==='time-'){ state.timeMinutes = Math.max(1, state.timeMinutes-1); }
-      if(act==='time+'){ state.timeMinutes = Math.min(10, state.timeMinutes+1); }
+      if(act==='rounds-'){ state.rounds = Math.max(1, state.rounds-1); }
+      if(act==='rounds+'){ state.rounds = Math.min(5, state.rounds+1); }
       $('playerCountVal').textContent = state.playerCount;
       $('impCountVal').textContent = state.impCount;
-      $('timeVal').innerHTML = state.timeMinutes + '<span style="font-size:16px;opacity:.7">m</span>';
+      $('roundsVal').textContent = state.rounds;
     });
   });
 
@@ -1300,7 +1293,6 @@
     }
 
     state.revealIdx = 0;
-    state.timerRemaining = state.timeMinutes*60;
     renderProgressDots();
     renderReveal();
     showScreen('screen-reveal');
@@ -1474,7 +1466,7 @@
     if(state.revealIdx >= state.playerCount){
       setDiscussStarterNote(getDisplayName(Math.floor(Math.random() * state.playerCount)));
       showScreen('screen-discuss');
-      resetTimerDisplay();
+      resetRoundDisplay();
     } else {
       renderReveal();
     }
@@ -1491,66 +1483,50 @@
     }
   });
 
-  // ---------- DISCUSS / TIMER ----------
-  function fmt(sec){
-    var m = Math.floor(sec/60), s = sec%60;
-    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
-  }
+  // ---------- DISCUSS / ROUNDS ----------
   function updateDiscussUIForRole(){
     var isGuest = (state.mode === 'online' && net.mode === 'guest');
-    $('timerControls').style.display = isGuest ? 'none' : 'flex';
+    $('discussActions').style.display = isGuest ? 'none' : 'block';
     $('goToVoteBtn').style.display = isGuest ? 'none' : 'inline-block';
   }
-  function broadcastTick(){
+  function renderRoundDisplay(){
+    $('roundDisplay').textContent = 'Round ' + state.currentRound + ' of ' + state.rounds;
+    $('nextRoundBtn').textContent = (state.currentRound >= state.rounds) ? 'Reveal the Impostor' : 'Next Round';
+  }
+  function resetRoundDisplay(){
+    state.currentRound = 1;
+    renderRoundDisplay();
+    updateDiscussUIForRole();
+  }
+  function broadcastRound(){
     net.order.forEach(function(id){
       var c = net.conns[id];
-      if(c && c.conn.open) c.conn.send({type:'tick', remaining: state.timerRemaining});
+      if(c && c.conn.open) c.conn.send({type:'round', round: state.currentRound});
     });
   }
-  function resetTimerDisplay(){
-    state.timerRemaining = state.timeMinutes*60;
-    $('timerDisplay').textContent = fmt(state.timerRemaining);
-    $('timerStartPause').textContent = 'Start';
-    state.timerRunning = false;
-    clearInterval(state.timerHandle);
-    updateDiscussUIForRole();
-    if(state.mode === 'online' && net.mode === 'host') broadcastTick();
-  }
-  function tickTimer(){
-    if(state.timerRemaining <= 0){
-      clearInterval(state.timerHandle);
-      state.timerRunning = false;
-      $('timerStartPause').textContent = 'Start';
-      playWhistle();
-      if(navigator.vibrate) navigator.vibrate([50, 80, 50, 80, 220]);
-      return;
-    }
-    state.timerRemaining--;
-    $('timerDisplay').textContent = fmt(state.timerRemaining);
-    if(state.mode === 'online' && net.mode === 'host') broadcastTick();
-  }
-  $('timerStartPause').addEventListener('click', function(){
-    if(state.timerRunning){
-      clearInterval(state.timerHandle);
-      state.timerRunning = false;
-      this.textContent = 'Start';
-    } else {
-      state.timerRunning = true;
-      this.textContent = 'Pause';
-      state.timerHandle = setInterval(tickTimer, 1000);
-    }
-  });
-  $('timerReset').addEventListener('click', resetTimerDisplay);
-  $('goToVoteBtn').addEventListener('click', function(){
-    if(state.mode === 'online' && net.mode !== 'host') return;
-    clearInterval(state.timerHandle);
-    state.timerRunning = false;
+  function endDiscussion(){
     if(state.mode === 'online' && net.mode === 'host'){
       triggerOnlineEnd();
     } else {
       renderEnd();
       showScreen('screen-end');
     }
+  }
+  $('nextRoundBtn').addEventListener('click', function(){
+    if(state.mode === 'online' && net.mode !== 'host') return;
+    playWhistle();
+    if(navigator.vibrate) navigator.vibrate([50, 80, 50, 80, 220]);
+    if(state.currentRound >= state.rounds){
+      endDiscussion();
+      return;
+    }
+    state.currentRound++;
+    renderRoundDisplay();
+    if(state.mode === 'online' && net.mode === 'host') broadcastRound();
+  });
+  $('goToVoteBtn').addEventListener('click', function(){
+    if(state.mode === 'online' && net.mode !== 'host') return;
+    endDiscussion();
   });
 
   // ---------- END ----------
@@ -1585,8 +1561,6 @@
     showScreen('screen-setup');
   });
   function goHome(){
-    clearInterval(state.timerHandle);
-    state.timerRunning = false;
     teardownNet();
     state.mode = 'local';
     updateModeUI();
@@ -1722,11 +1696,11 @@
     var starterName = roster[Math.floor(Math.random() * roster.length)].name;
     net.order.forEach(function(id){
       var c = net.conns[id];
-      if(c && c.conn.open) c.conn.send({type:'discuss', duration: state.timeMinutes*60, starter: starterName});
+      if(c && c.conn.open) c.conn.send({type:'discuss', rounds: state.rounds, starter: starterName});
     });
     setDiscussStarterNote(starterName);
     showScreen('screen-discuss');
-    resetTimerDisplay();
+    resetRoundDisplay();
   }
   function startOnlineGame(){
     var totalPlayers = 1 + net.order.length;
@@ -1834,14 +1808,15 @@
       net.myDecoyName = data.decoyName;
       enterOnlineReveal(net.myAssignment, net.myDecoyName, net.myName);
     } else if(data.type === 'discuss'){
-      state.timerRemaining = data.duration;
-      $('timerDisplay').textContent = fmt(state.timerRemaining);
+      state.rounds = data.rounds;
+      state.currentRound = 1;
+      renderRoundDisplay();
       setDiscussStarterNote(data.starter);
       showScreen('screen-discuss');
       updateDiscussUIForRole();
-    } else if(data.type === 'tick'){
-      state.timerRemaining = data.remaining;
-      $('timerDisplay').textContent = fmt(state.timerRemaining);
+    } else if(data.type === 'round'){
+      state.currentRound = data.round;
+      renderRoundDisplay();
     } else if(data.type === 'end'){
       renderEndFromNames(data.impostors, data.secret);
       updateEndScreenForOnline();
