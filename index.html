@@ -1399,20 +1399,45 @@
       }, 300);
     }
   }
+  // Minimum hold threshold: a quick tap must do nothing at all (no reveal,
+  // no sound, no vibration). The reveal only actually starts if the finger
+  // is still down once this timer completes; a release before that just
+  // cancels the pending timer with no visible or audible effect.
+  var HOLD_THRESHOLD_MS = 180;
+  var holdTimer = null;
+  function clearHoldTimer(){
+    if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+  }
   (function(){
     var card = $('card');
     card.addEventListener('pointerdown', function(e){
       e.preventDefault();
       try{ card.setPointerCapture(e.pointerId); }catch(err){}
-      startCardReveal();
+      clearHoldTimer();
+      holdTimer = setTimeout(function(){
+        holdTimer = null;
+        startCardReveal();
+      }, HOLD_THRESHOLD_MS);
     });
-    card.addEventListener('pointerup', endCardReveal);
-    card.addEventListener('pointercancel', endCardReveal);
+    card.addEventListener('pointerup', function(){
+      clearHoldTimer();
+      endCardReveal();
+    });
+    card.addEventListener('pointercancel', function(){
+      clearHoldTimer();
+      endCardReveal();
+    });
     // Safety nets: never leave content exposed if release is missed
     // (app backgrounded mid-hold, OS interruption, etc.)
-    window.addEventListener('blur', endCardReveal);
+    window.addEventListener('blur', function(){
+      clearHoldTimer();
+      endCardReveal();
+    });
     document.addEventListener('visibilitychange', function(){
-      if(document.hidden) endCardReveal();
+      if(document.hidden){
+        clearHoldTimer();
+        endCardReveal();
+      }
     });
   })();
 
