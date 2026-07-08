@@ -608,6 +608,18 @@
 (function(){
   "use strict";
 
+  // iOS Safari has ignored user-scalable=no in the viewport meta tag since
+  // iOS 10 (for accessibility reasons), so pinch-zoom can't be fully
+  // disabled via the meta tag alone there. These two listeners are the
+  // standard JS-level fix: block the Safari-specific gesturestart event
+  // that fires when a pinch begins, and block multi-touch touchmove
+  // (only when a 2nd finger is involved, so normal single-finger
+  // scrolling/tapping elsewhere in the app is untouched).
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+  document.addEventListener('touchmove', function(e){
+    if(e.touches.length > 1) e.preventDefault();
+  }, { passive:false });
+
   var PLAYERS_DB = [
     {n:"Lionel Messi", p:"Forward", g:"icon"},
     {n:"Cristiano Ronaldo", p:"Forward", g:"icon"},
