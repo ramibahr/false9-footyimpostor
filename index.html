@@ -615,8 +615,13 @@
   // (not caught by gesturestart/multi-touch above). Standard cross-browser
   // fix: if a touchend fires within 300ms of the previous one anywhere on
   // the page, treat it as a double-tap and suppress the native zoom.
+  // Buttons are skipped here: they already have touch-action:manipulation,
+  // which disables double-tap-zoom on them per the CSS spec, so this
+  // document-level check would otherwise just eat legitimate rapid taps
+  // (e.g. mashing a stepper's +/- button) without adding any protection.
   var lastTouchEnd = 0;
   document.addEventListener('touchend', function(e){
+    if(e.target.closest('button')) return;
     var now = Date.now();
     if(now - lastTouchEnd < 300){
       e.preventDefault();
