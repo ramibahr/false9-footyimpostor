@@ -620,6 +620,19 @@
     if(e.touches.length > 1) e.preventDefault();
   }, { passive:false });
 
+  // Double-tap-to-zoom is a separate mobile browser gesture from pinch-zoom
+  // (not caught by gesturestart/multi-touch above) — standard cross-browser
+  // fix: if a touchend fires within 300ms of the previous one anywhere on
+  // the page, treat it as a double-tap and suppress the native zoom.
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if(now - lastTouchEnd < 300){
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive:false });
+
   var PLAYERS_DB = [
     {n:"Lionel Messi", p:"Forward", g:"icon"},
     {n:"Cristiano Ronaldo", p:"Forward", g:"icon"},
