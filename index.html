@@ -272,7 +272,10 @@
     -webkit-transform-style:preserve-3d;
     transition: transform .6s cubic-bezier(.2,.8,.2,1);
     cursor:pointer;
-    touch-action: manipulation;
+    touch-action: none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
   }
   .card.no-anim{ transition:none !important; }
   .card.flipped{ transform:rotateY(180deg); }
@@ -286,6 +289,14 @@
     text-align:center;
     box-shadow: var(--shadow);
     border:2px solid rgba(242,246,238,0.15);
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .kicker, .headline, .sub, .flourish{
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
   }
   .card-back{
     background: radial-gradient(circle at 50% 40%, var(--pitch-mid), var(--pitch-dark));
@@ -1312,7 +1323,6 @@
     card.classList.add('no-anim');
     card.classList.remove('flipped');
     hasRevealedThisCard = false;
-    revealHeld = false;
     $('nextRevealBtn').style.display = 'none';
     $('onlineReadyBtn').style.display = 'none';
     $('onlineWaitingNote').classList.add('hidden-ui');
@@ -1335,7 +1345,6 @@
     card.classList.add('no-anim');
     card.classList.remove('flipped');
     hasRevealedThisCard = false;
-    revealHeld = false;
     $('nextRevealBtn').style.display = 'none';
     $('onlineReadyBtn').style.display = 'none';
     $('onlineWaitingNote').classList.add('hidden-ui');
@@ -1355,14 +1364,17 @@
 
   // Press-and-hold reveal: content is only ever visible while actively
   // held, and hides itself the instant the pointer is released — never
-  // left exposed by a tap. hasRevealedThisCard/revealHeld reset whenever
-  // a fresh card is set up (renderReveal / enterOnlineReveal above).
+  // left exposed by a tap. The card's own 'flipped' class is the single
+  // source of truth for whether content is showing (not a separate JS
+  // flag that could desync from it) — endCardReveal always removes it
+  // unconditionally, no matter how many times it's called or with what
+  // prior state, so a release can never leave the content stuck open.
+  // hasRevealedThisCard resets whenever a fresh card is set up
+  // (renderReveal / enterOnlineReveal above).
   var hasRevealedThisCard = false;
-  var revealHeld = false;
   function startCardReveal(){
     var card = $('card');
-    if(revealHeld || card.classList.contains('flipped')) return;
-    revealHeld = true;
+    if(card.classList.contains('flipped')) return;
     card.classList.add('flipped');
     var isImpostor = (state.mode === 'online') ?
       (net.myAssignment && net.myAssignment.role === 'impostor') :
@@ -1373,10 +1385,10 @@
     }
   }
   function endCardReveal(){
-    if(!revealHeld) return;
-    revealHeld = false;
-    $('card').classList.remove('flipped');
-    if(!hasRevealedThisCard){
+    var card = $('card');
+    var wasFlipped = card.classList.contains('flipped');
+    card.classList.remove('flipped');
+    if(wasFlipped && !hasRevealedThisCard){
       hasRevealedThisCard = true;
       setTimeout(function(){
         if(state.mode === 'online'){
