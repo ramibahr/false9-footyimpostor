@@ -1420,7 +1420,7 @@
   // no sound, no vibration). The reveal only actually starts if the finger
   // is still down once this timer completes; a release before that just
   // cancels the pending timer with no visible or audible effect.
-  var HOLD_THRESHOLD_MS = 180;
+  var HOLD_THRESHOLD_MS = 110;
   var holdTimer = null;
   function clearHoldTimer(){
     if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
