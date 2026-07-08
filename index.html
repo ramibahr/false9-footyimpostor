@@ -534,7 +534,7 @@
         <div class="card" id="card">
           <div class="card-face card-back">
             <div class="ring"><span id="cardJersey">1</span></div>
-            <div class="tap-hint">TAP CARD TO REVEAL</div>
+            <div class="tap-hint">HOLD TO REVEAL</div>
           </div>
           <div class="card-face card-front" id="cardFront">
             <div class="kicker" id="cardKicker">Category</div>
@@ -1311,6 +1311,8 @@
     // so the new player's card is never mid-flip while it's still readable.
     card.classList.add('no-anim');
     card.classList.remove('flipped');
+    hasRevealedThisCard = false;
+    revealHeld = false;
     $('nextRevealBtn').style.display = 'none';
     $('onlineReadyBtn').style.display = 'none';
     $('onlineWaitingNote').classList.add('hidden-ui');
@@ -1332,6 +1334,8 @@
     var card = $('card');
     card.classList.add('no-anim');
     card.classList.remove('flipped');
+    hasRevealedThisCard = false;
+    revealHeld = false;
     $('nextRevealBtn').style.display = 'none';
     $('onlineReadyBtn').style.display = 'none';
     $('onlineWaitingNote').classList.add('hidden-ui');
@@ -1349,9 +1353,16 @@
     showScreen('screen-reveal');
   }
 
-  $('card').addEventListener('click', function(){
+  // Press-and-hold reveal: content is only ever visible while actively
+  // held, and hides itself the instant the pointer is released — never
+  // left exposed by a tap. hasRevealedThisCard/revealHeld reset whenever
+  // a fresh card is set up (renderReveal / enterOnlineReveal above).
+  var hasRevealedThisCard = false;
+  var revealHeld = false;
+  function startCardReveal(){
     var card = $('card');
-    if(card.classList.contains('flipped')) return;
+    if(revealHeld || card.classList.contains('flipped')) return;
+    revealHeld = true;
     card.classList.add('flipped');
     var isImpostor = (state.mode === 'online') ?
       (net.myAssignment && net.myAssignment.role === 'impostor') :
@@ -1360,14 +1371,38 @@
     if(navigator.vibrate){
       navigator.vibrate(isImpostor ? [30, 60, 30, 60, 90] : [20]);
     }
-    setTimeout(function(){
-      if(state.mode === 'online'){
-        $('onlineReadyBtn').style.display = 'block';
-      } else {
-        $('nextRevealBtn').style.display = 'block';
-      }
-    }, 350);
-  });
+  }
+  function endCardReveal(){
+    if(!revealHeld) return;
+    revealHeld = false;
+    $('card').classList.remove('flipped');
+    if(!hasRevealedThisCard){
+      hasRevealedThisCard = true;
+      setTimeout(function(){
+        if(state.mode === 'online'){
+          $('onlineReadyBtn').style.display = 'block';
+        } else {
+          $('nextRevealBtn').style.display = 'block';
+        }
+      }, 300);
+    }
+  }
+  (function(){
+    var card = $('card');
+    card.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      try{ card.setPointerCapture(e.pointerId); }catch(err){}
+      startCardReveal();
+    });
+    card.addEventListener('pointerup', endCardReveal);
+    card.addEventListener('pointercancel', endCardReveal);
+    // Safety nets: never leave content exposed if release is missed
+    // (app backgrounded mid-hold, OS interruption, etc.)
+    window.addEventListener('blur', endCardReveal);
+    document.addEventListener('visibilitychange', function(){
+      if(document.hidden) endCardReveal();
+    });
+  })();
 
   function setDiscussStarterNote(name){
     $('discussStarterNote').textContent = name + ' starts — go clockwise from there.';
