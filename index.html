@@ -333,9 +333,8 @@
     border-radius:12px; padding:10px 16px; margin-bottom:18px; text-align:center;
   }
   .discuss-starter:empty{ display:none; }
-  .round-big{ font-family:'Anton'; font-size:34px; letter-spacing:0.5px; margin:10px 0 6px; text-align:center; }
+  .rounds-note{ font-family:'Inter'; font-weight:600; font-size:16px; color:var(--chalk); margin:4px 0 20px; text-align:center; }
   .timer-sub{ color:var(--chalk-dim); font-size:14px; margin-bottom:30px; text-align:center; }
-  .discuss-actions{ width:100%; max-width:320px; }
   .reveal-link{ margin-top:36px; background:none; border:none; color:var(--gold); font-family:'Inter'; font-weight:600; font-size:16px; text-decoration:underline; cursor:pointer; touch-action: manipulation; }
 
   /* End screen */
@@ -567,11 +566,8 @@
     <div class="discuss-wrap">
       <div class="eyebrow">Discussion</div>
       <div class="discuss-starter" id="discussStarterNote"></div>
-      <div class="round-big" id="roundDisplay">Round 1 of 3</div>
+      <div class="rounds-note" id="roundsNote"></div>
       <div class="timer-sub">Ask questions. Watch for hesitation. Find the impostor.</div>
-      <div class="discuss-actions" id="discussActions">
-        <button class="btn-primary" id="nextRoundBtn">Next Round</button>
-      </div>
       <button class="reveal-link" id="goToVoteBtn">Reveal the impostor</button>
     </div>
   </section>
@@ -616,7 +612,7 @@
   }, { passive:false });
 
   // Double-tap-to-zoom is a separate mobile browser gesture from pinch-zoom
-  // (not caught by gesturestart/multi-touch above) — standard cross-browser
+  // (not caught by gesturestart/multi-touch above). Standard cross-browser
   // fix: if a touchend fires within 300ms of the previous one anywhere on
   // the page, treat it as a double-tap and suppress the native zoom.
   var lastTouchEnd = 0;
@@ -963,8 +959,7 @@
     secretPlayer: null,
     decoyPlayer: null,
     recentSecrets: [], // names used in the last few rounds, avoided next pick
-    revealIdx: 0,
-    currentRound: 1
+    revealIdx: 0
   };
 
   // ---------- ONLINE MULTIPLAYER ----------
@@ -1059,29 +1054,6 @@
     snap(0.012, 2400, 1.6, 0.09, 0.30); // the snap as the card straightens
     snap(0.03,  1400, 1.0, 0.11, 0.13); // a faint papery tail as it settles
   }
-  // Referee whistle when discussion time runs out: two short blasts + one long.
-  function playWhistle(){
-    var ctx = getCtx();
-    if(!ctx) return;
-    function blast(offset, dur){
-      var t0 = ctx.currentTime + offset;
-      var osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(2200, t0);
-      osc.frequency.linearRampToValueAtTime(2650, t0 + dur*0.5);
-      osc.frequency.linearRampToValueAtTime(2300, t0 + dur);
-      var g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(t0); osc.stop(t0 + dur + 0.02);
-    }
-    blast(0, 0.16);
-    blast(0.22, 0.16);
-    blast(0.44, 0.34);
-  }
-
   function showScreen(id){
     var screens = document.querySelectorAll('.screen');
     for(var i=0;i<screens.length;i++){ screens[i].classList.remove('active'); }
@@ -1106,7 +1078,7 @@
     }
   }
   function hideAllOnlinePanels(){
-    // onlineChooseWrap (Host a Room / Join a Room) is NOT included here —
+    // onlineChooseWrap (Host a Room / Join a Room) is NOT included here,
     // both stay visible for the whole online session; only the panel
     // below them (host lobby / join form / join wait) is exclusive.
     ['hostLobbyWrap','joinFormWrap','joinWaitWrap'].forEach(function(id){
@@ -1380,10 +1352,10 @@
   }
 
   // Press-and-hold reveal: content is only ever visible while actively
-  // held, and hides itself the instant the pointer is released — never
+  // held, and hides itself the instant the pointer is released, never
   // left exposed by a tap. The card's own 'flipped' class is the single
   // source of truth for whether content is showing (not a separate JS
-  // flag that could desync from it) — endCardReveal always removes it
+  // flag that could desync from it): endCardReveal always removes it
   // unconditionally, no matter how many times it's called or with what
   // prior state, so a release can never leave the content stuck open.
   // hasRevealedThisCard resets whenever a fresh card is set up
@@ -1459,14 +1431,14 @@
   })();
 
   function setDiscussStarterNote(name){
-    $('discussStarterNote').textContent = name + ' starts — go clockwise from there.';
+    $('discussStarterNote').textContent = name + ' starts, go clockwise from there.';
   }
   $('nextRevealBtn').addEventListener('click', function(){
     state.revealIdx++;
     if(state.revealIdx >= state.playerCount){
       setDiscussStarterNote(getDisplayName(Math.floor(Math.random() * state.playerCount)));
       showScreen('screen-discuss');
-      resetRoundDisplay();
+      enterDiscussion();
     } else {
       renderReveal();
     }
@@ -1483,50 +1455,26 @@
     }
   });
 
-  // ---------- DISCUSS / ROUNDS ----------
+  // ---------- DISCUSS ----------
   function updateDiscussUIForRole(){
     var isGuest = (state.mode === 'online' && net.mode === 'guest');
-    $('discussActions').style.display = isGuest ? 'none' : 'block';
     $('goToVoteBtn').style.display = isGuest ? 'none' : 'inline-block';
   }
-  function renderRoundDisplay(){
-    $('roundDisplay').textContent = 'Round ' + state.currentRound + ' of ' + state.rounds;
-    $('nextRoundBtn').textContent = (state.currentRound >= state.rounds) ? 'Reveal the Impostor' : 'Next Round';
+  function setRoundsNote(){
+    $('roundsNote').textContent = 'You have ' + state.rounds + ' round' + (state.rounds === 1 ? '' : 's') + ' to describe and discuss.';
   }
-  function resetRoundDisplay(){
-    state.currentRound = 1;
-    renderRoundDisplay();
+  function enterDiscussion(){
+    setRoundsNote();
     updateDiscussUIForRole();
   }
-  function broadcastRound(){
-    net.order.forEach(function(id){
-      var c = net.conns[id];
-      if(c && c.conn.open) c.conn.send({type:'round', round: state.currentRound});
-    });
-  }
-  function endDiscussion(){
+  $('goToVoteBtn').addEventListener('click', function(){
+    if(state.mode === 'online' && net.mode !== 'host') return;
     if(state.mode === 'online' && net.mode === 'host'){
       triggerOnlineEnd();
     } else {
       renderEnd();
       showScreen('screen-end');
     }
-  }
-  $('nextRoundBtn').addEventListener('click', function(){
-    if(state.mode === 'online' && net.mode !== 'host') return;
-    playWhistle();
-    if(navigator.vibrate) navigator.vibrate([50, 80, 50, 80, 220]);
-    if(state.currentRound >= state.rounds){
-      endDiscussion();
-      return;
-    }
-    state.currentRound++;
-    renderRoundDisplay();
-    if(state.mode === 'online' && net.mode === 'host') broadcastRound();
-  });
-  $('goToVoteBtn').addEventListener('click', function(){
-    if(state.mode === 'online' && net.mode !== 'host') return;
-    endDiscussion();
   });
 
   // ---------- END ----------
@@ -1700,7 +1648,7 @@
     });
     setDiscussStarterNote(starterName);
     showScreen('screen-discuss');
-    resetRoundDisplay();
+    enterDiscussion();
   }
   function startOnlineGame(){
     var totalPlayers = 1 + net.order.length;
@@ -1809,14 +1757,9 @@
       enterOnlineReveal(net.myAssignment, net.myDecoyName, net.myName);
     } else if(data.type === 'discuss'){
       state.rounds = data.rounds;
-      state.currentRound = 1;
-      renderRoundDisplay();
       setDiscussStarterNote(data.starter);
       showScreen('screen-discuss');
-      updateDiscussUIForRole();
-    } else if(data.type === 'round'){
-      state.currentRound = data.round;
-      renderRoundDisplay();
+      enterDiscussion();
     } else if(data.type === 'end'){
       renderEndFromNames(data.impostors, data.secret);
       updateEndScreenForOnline();
@@ -1837,7 +1780,7 @@
       if(settled) return;
       settled = true;
       $('joinSubmitBtn').disabled = false;
-      showJoinError('Room not found — check the code and try again.');
+      showJoinError('Room not found, check the code and try again.');
       try{ peer.destroy(); }catch(e){}
     }, 10000);
 
@@ -1861,7 +1804,7 @@
         settled = true;
         clearTimeout(failTimer);
         $('joinSubmitBtn').disabled = false;
-        showJoinError('Room not found — check the code and try again.');
+        showJoinError('Room not found, check the code and try again.');
       });
     });
     peer.on('error', function(err){
@@ -1870,7 +1813,7 @@
       clearTimeout(failTimer);
       $('joinSubmitBtn').disabled = false;
       if(err && err.type === 'peer-unavailable'){
-        showJoinError('Room not found — check the code and try again.');
+        showJoinError('Room not found, check the code and try again.');
       } else {
         showJoinError('Connection error. Please try again.');
       }
