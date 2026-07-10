@@ -117,9 +117,14 @@
   .modal-steps li{ display:flex; gap:12px; align-items:flex-start; }
   .modal-steps .num{ font-family:'Anton'; font-size:20px; color:var(--gold); flex-shrink:0; width:22px; }
   .modal-steps .txt{ font-size:14px; line-height:1.45; color:var(--chalk-dim); padding-top:1px; }
-  .modal-coffee{ text-align:center; margin:-4px 0 20px; font-size:13px; }
-  .coffee-link{ color:var(--chalk-dim); text-decoration:underline; }
-  .coffee-link:active{ opacity:0.7; }
+  .modal-coffee{ text-align:center; margin:-4px 0 20px; }
+  .coffee-prompt{ font-size:13px; color:var(--chalk-dim); margin-bottom:8px; }
+  .coffee-link{
+    display:inline-block; color:var(--chalk-dim); text-decoration:none; font-size:14px; font-weight:600;
+    background:rgba(242,246,238,0.06); border:1px solid var(--pitch-line); border-radius:999px;
+    padding:6px 14px; touch-action:manipulation;
+  }
+  .coffee-link:active{ opacity:0.7; background:rgba(242,246,238,0.12); }
   .screen{ display:none; flex-direction:column; flex:1; animation: fadeIn .35s ease; }
   .screen.active{ display:flex; }
   @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
@@ -420,7 +425,10 @@
         <li><span class="num">3</span><span class="txt">Pass the phone round. Each player privately taps their own card to see their role.</span></li>
         <li><span class="num">4</span><span class="txt">Take turns describing the player without saying the name, then vote out whoever you think is faking it.</span></li>
       </ol>
-      <div class="modal-coffee"><a class="coffee-link" href="https://buymeacoffee.com/rbstudio" target="_blank" rel="noopener">Enjoying the game? Buy me a coffee</a></div>
+      <div class="modal-coffee">
+        <div class="coffee-prompt">Enjoying the game?</div>
+        <a class="coffee-link" href="https://buymeacoffee.com/rbstudio" target="_blank" rel="noopener">&#9749; Buy me a coffee</a>
+      </div>
       <button class="btn-primary" id="closeHowToPlay">Got it, let's play</button>
     </div>
   </div>
@@ -563,7 +571,7 @@
       <button type="button" class="btn-secondary" id="leaveWaitBtn" style="margin-top:14px;">Leave Room</button>
     </div>
 
-    <p class="footnote" id="setupFootnote">False Nine runs right in your phone or desktop browser. iPhone and Android both work. Add this page to your Home Screen for a full-screen, app-like feel.<br>Enjoying the game? <a class="coffee-link" href="https://buymeacoffee.com/rbstudio" target="_blank" rel="noopener">Buy me a coffee</a></p>
+    <p class="footnote" id="setupFootnote">False Nine runs right in your phone or desktop browser. iPhone and Android both work. Add this page to your Home Screen for a full-screen, app-like feel.<br>Enjoying the game?<br><a class="coffee-link" href="https://buymeacoffee.com/rbstudio" target="_blank" rel="noopener" style="margin-top:8px;">&#9749; Buy me a coffee</a></p>
   </section>
 
   <!-- REVEAL SCREEN -->
